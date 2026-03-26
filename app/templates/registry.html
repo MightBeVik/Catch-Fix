@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% block title %}Service Registry{% endblock %}
+
+{% block content %}
+<div class="header-row">
+    <div class="page-header">
+        <h1 class="page-title">Service Registry</h1>
+        <p class="page-subtitle">Centralized authority for all active AI models and endpoints within the Sovereign Ledger ecosystem. Managed via automated compliance protocols.</p>
+    </div>
+    <button class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Register New Service
+    </button>
+</div>
+
+<!-- Stats Row -->
+<div class="stats-row">
+    <div class="stat-card animate-in">
+        <div class="stat-label">Total Assets</div>
+        <div class="stat-value">124</div>
+        <div class="stat-sub positive">+3.4%</div>
+    </div>
+    <div class="stat-card animate-in">
+        <div class="stat-label">Operational</div>
+        <div class="stat-value">121</div>
+        <div class="stat-sub info">97.5%</div>
+    </div>
+    <div class="stat-card animate-in">
+        <div class="stat-label">Incidents</div>
+        <div class="stat-value" style="color: var(--accent-red);">03</div>
+        <div class="stat-sub danger">Critical</div>
+    </div>
+    <div class="stat-card animate-in">
+        <div class="stat-label">Compute Load</div>
+        <div class="stat-value">82%</div>
+        <div class="stat-sub positive">Optimal</div>
+    </div>
+</div>
+
+<!-- Search & Filter -->
+<div class="filter-bar">
+    <div class="search-input">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Search registry...">
+    </div>
+    <button class="btn btn-outline btn-sm">All Environments</button>
+    <span class="filter-count">Showing 1-12 of 124 services</span>
+</div>
+
+<!-- Service Table -->
+<div class="table-card">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Service Name</th>
+                <th>Owner</th>
+                <th>Environment</th>
+                <th>Model Name</th>
+                <th>Data Sensitivity</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <div class="table-service-name">RiskAssessment_v4</div>
+                    <div class="table-service-id">ID: SRV-882-QX</div>
+                </td>
+                <td style="color: var(--text-secondary);">FinOps Core</td>
+                <td><span class="badge badge-prod">PROD</span></td>
+                <td style="font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary);">GPT-4-Turbo</td>
+                <td><span class="sensitivity confidential">Confidential</span></td>
+                <td>
+                    <div class="status-cell">
+                        <span class="status-dot online"></span>
+                        <div>
+                            <div class="latency-value" style="color: var(--accent-green);">12ms</div>
+                            <div class="latency-label">latency</div>
+                        </div>
+                    </div>
+                </td>
+                <td><button class="btn btn-outline btn-sm">Test Connection</button></td>
+            </tr>
+            <tr>
+                <td>
+                    <div class="table-service-name">SemanticParser_Alpha</div>
+                    <div class="table-service-id">ID: SRV-102-LK</div>
+                </td>
+                <td style="color: var(--text-secondary);">NLP Research</td>
+                <td><span class="badge badge-dev">DEV</span></td>
+                <td style="font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary);">Llama-3-70b</td>
+                <td><span class="sensitivity internal">Internal</span></td>
+                <td>
+                    <div class="status-cell">
+                        <span class="status-dot online pulse"></span>
+                        <div>
+                            <div class="latency-value" style="color: var(--text-secondary);">Testing...</div>
+                            <div class="latency-label">&nbsp;</div>
+                        </div>
+                    </div>
+                </td>
+                <td><button class="btn btn-primary btn-sm" style="opacity: 0.7; pointer-events: none;">Testing...</button></td>
+            </tr>
+            <tr>
+                <td>
+                    <div class="table-service-name">CustomerSentiment_Bot</div>
+                    <div class="table-service-id">ID: SRV-441-ZZ</div>
+                </td>
+                <td style="color: var(--text-secondary);">Marketing Dept</td>
+                <td><span class="badge badge-prod">PROD</span></td>
+                <td style="font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary);">Claude-3-Opus</td>
+                <td><span class="sensitivity public">Public</span></td>
+                <td>
+                    <div class="status-cell">
+                        <span class="status-dot error"></span>
+                        <div>
+                            <div class="latency-value" style="color: var(--accent-red);">Timeout (504)</div>
+                            <div class="latency-label">&nbsp;</div>
+                        </div>
+                    </div>
+                </td>
+                <td><button class="btn btn-danger btn-sm">Retry Test</button></td>
+            </tr>
+            <tr>
+                <td>
+                    <div class="table-service-name">AutoCategorizer_X</div>
+                    <div class="table-service-id">ID: SRV-002-PP</div>
+                </td>
+                <td style="color: var(--text-secondary);">Logistics Core</td>
+                <td><span class="badge badge-dev">DEV</span></td>
+                <td style="font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary);">Mistral-Large</td>
+                <td><span class="sensitivity internal">Internal</span></td>
+                <td>
+                    <div class="status-cell">
+                        <span class="status-dot online"></span>
+                        <div>
+                            <div class="latency-value" style="color: var(--accent-green);">8ms</div>
+                            <div class="latency-label">latency</div>
+                        </div>
+                    </div>
+                </td>
+                <td><button class="btn btn-outline btn-sm">Test Connection</button></td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="table-footer">
+        <span class="table-footer-text">Compliance Status: Verified by Sentinel v2.4</span>
+        <div class="pagination">
+            <button>‹</button>
+            <button class="active">1</button>
+            <button>2</button>
+            <button>›</button>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Panels -->
+<div class="bottom-panels">
+    <!-- Operational Intelligence Feed -->
+    <div class="feed-card">
+        <div class="feed-header">
+            <span class="feed-title">
+                <span class="status-dot online pulse"></span>
+                Operational Intelligence Feed
+            </span>
+        </div>
+        <div class="feed-item">
+            <span class="feed-time">
+                <span class="status-dot online"></span>
+                14:02:11
+            </span>
+            <span class="feed-text"><strong>RiskAssessment_v4</strong> connection verified successfully from node EU-WEST-1. Response latency: 12ms.</span>
+        </div>
+        <div class="feed-item">
+            <span class="feed-time">
+                <span class="status-dot online"></span>
+                13:58:45
+            </span>
+            <span class="feed-text">Scheduled governance audit initiated for <strong>NLP Research</strong> group. Scan depth: Level 4.</span>
+        </div>
+        <div class="feed-item">
+            <span class="feed-time">
+                <span class="status-dot error"></span>
+                13:42:01
+            </span>
+            <span class="feed-text"><span class="critical">CRITICAL:</span> Registry entry <span class="feed-link">CustomerSentiment_Bot</span> failed availability handshake. Protocol 7 triggered.</span>
+        </div>
+    </div>
+
+    <!-- Registry Snapshot -->
+    <div class="snapshot-card">
+        <div class="snapshot-title">Registry Snapshot</div>
+        <div class="snapshot-subtitle">Active Model Distribution</div>
+
+        <div class="dist-item">
+            <div class="dist-label">
+                <span>Large Language Models</span>
+                <span>64%</span>
+            </div>
+            <div class="dist-bar">
+                <div class="dist-bar-fill cyan" style="width: 64%;"></div>
+            </div>
+        </div>
+
+        <div class="dist-item">
+            <div class="dist-label">
+                <span>Vision & Synthesis</span>
+                <span>21%</span>
+            </div>
+            <div class="dist-bar">
+                <div class="dist-bar-fill purple" style="width: 21%;"></div>
+            </div>
+        </div>
+
+        <div class="dist-item">
+            <div class="dist-label">
+                <span>Predictive Analytics</span>
+                <span>15%</span>
+            </div>
+            <div class="dist-bar">
+                <div class="dist-bar-fill amber" style="width: 15%;"></div>
+            </div>
+        </div>
+
+        <div class="sovereignty-badge">
+            <svg class="check-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <div>
+                <h4>Data Sovereignty</h4>
+                <p>All registry models are bound by the <em>Sovereign Protocol v1.2</em>. Encrypted data residency is enforced per service ID.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
