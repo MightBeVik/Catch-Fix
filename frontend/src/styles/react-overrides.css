@@ -1,0 +1,164 @@
+#root {
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.module-button {
+  margin-top: 16px;
+  width: 100%;
+  justify-content: center;
+}
+
+.nav-dot {
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.static-item {
+  cursor: default;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+}
+
+.service-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mono-text {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.panel-grid,
+.cards-grid {
+  display: grid;
+  gap: var(--space-xl);
+}
+
+.two-column-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.detail-card,
+.list-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  box-shadow: var(--shadow-card);
+}
+
+.stack-list {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.list-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.list-card-meta {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.info-list {
+  display: grid;
+  gap: 10px;
+}
+
+.info-list.compact {
+  gap: 8px;
+}
+
+.checklist {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.table-card td {
+  color: var(--text-secondary);
+}
+
+.latency-value {
+  font-size: 12px;
+}
+
+.status-dot.testing {
+  background: var(--accent-amber);
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+}
+
+@media (max-width: 1100px) {
+  .two-column-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
+  }
+
+  .main-content {
+    margin-left: 0;
+  }
+
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .topbar {
+    flex-direction: column;
+    height: auto;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px 24px;
+  }
+}
+
+@media (max-width: 720px) {
+  .page-content {
+    padding: 16px;
+  }
+
+  .stats-row,
+  .services-grid,
+  .bottom-panels {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar-nav {
+    display: none;
+  }
+
+  .topbar-search input {
+    width: 100%;
+  }
+}

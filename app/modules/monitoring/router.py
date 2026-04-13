@@ -17,6 +17,12 @@ from app.modules.monitoring.database import (
     save_eval_result,
     get_all_eval_results,
 )
+"""Monitoring module API."""
+
+from fastapi import APIRouter
+
+from app.modules.monitoring.data import DASHBOARD
+
 
 router = APIRouter(prefix="/monitoring", tags=["monitoring"])
 
@@ -164,3 +170,6 @@ async def get_eval_results() -> dict:
         "total":   len(results),
         "results": results,
     }
+@router.get("/dashboard")
+async def get_dashboard() -> dict[str, object]:
+    return DASHBOARD
