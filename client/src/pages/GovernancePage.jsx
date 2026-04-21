@@ -24,7 +24,6 @@ export function GovernancePage() {
   const [sortOrder, setSortOrder] = useState("desc");
   const [status, setStatus] = useState("");
   const adminEnabled = isAdmin(role);
-  const anthropicReady = Boolean(runtime?.runtime?.anthropic_configured);
 
   async function load(order = sortOrder) {
     const [roleData, policyData, auditData, runtimeData] = await Promise.all([
@@ -144,12 +143,13 @@ export function GovernancePage() {
           {runtime ? (
             <div className="runtime-grid" style={{ marginTop: 16 }}>
               <div className="panel-elevated" style={{ padding: "14px 16px" }}>
-                <div className="field-label">Claude runtime</div>
+                <div className="field-label">LLM routing runtime</div>
                 <div className="field-stack" style={{ marginTop: 12 }}>
-                  <div>Configured: {runtime.runtime.anthropic_configured ? "yes" : "no"}</div>
-                  <div>Model: {runtime.runtime.anthropic_model}</div>
-                  <div>Timeout: {runtime.runtime.anthropic_timeout_ms} ms</div>
-                  <div>Retries: {runtime.runtime.anthropic_max_retries}</div>
+                  <div>Supported providers: {(runtime.runtime.supported_providers || []).map((provider) => provider.name).join(", ")}</div>
+                  <div>Anthropic secret loaded: {runtime.runtime.secrets?.ANTHROPIC_API_KEY ? "yes" : "no"}</div>
+                  <div>OpenAI secret loaded: {runtime.runtime.secrets?.OPENAI_API_KEY ? "yes" : "no"}</div>
+                  <div>Timeout: {runtime.runtime.request_timeout_ms} ms</div>
+                  <div>Retries: {runtime.runtime.request_max_retries}</div>
                   <div>Drift threshold: {runtime.runtime.drift_threshold}</div>
                 </div>
               </div>
@@ -186,7 +186,7 @@ export function GovernancePage() {
             Use these controls to run evaluation cycles, pause or resume the scheduler, and manage the seeded operational dataset.
           </p>
           <div className="field-stack" style={{ marginTop: 16 }}>
-            <button className="button button-secondary" disabled={!adminEnabled || !anthropicReady} onClick={() => handleAdminAction("run")} title={anthropicReady ? "" : "Set ANTHROPIC_API_KEY in server/.env to enable manual evaluation cycles."} type="button">
+            <button className="button button-secondary" disabled={!adminEnabled} onClick={() => handleAdminAction("run")} type="button">
               Run evaluation cycle now
             </button>
             <button className="button button-secondary" disabled={!adminEnabled} onClick={() => handleAdminAction("pause")} type="button">

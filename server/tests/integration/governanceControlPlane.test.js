@@ -9,11 +9,13 @@ describe("governance control plane", () => {
   beforeEach(() => {
     resetDatabase();
     delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENAI_API_KEY;
     global.fetch = undefined;
   });
 
   afterEach(() => {
     delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.OPENAI_API_KEY;
     global.fetch = undefined;
   });
 
@@ -24,7 +26,11 @@ describe("governance control plane", () => {
     expect(response.body).toEqual(
       expect.objectContaining({
         runtime: expect.objectContaining({
-          anthropic_configured: false,
+          supported_providers: expect.any(Array),
+          secrets: expect.objectContaining({
+            ANTHROPIC_API_KEY: false,
+            OPENAI_API_KEY: expect.any(Boolean),
+          }),
           drift_threshold: 70,
         }),
         scheduler: expect.objectContaining({
@@ -71,6 +77,8 @@ describe("governance control plane", () => {
       ok: true,
       json: async () => ({
         content: [{ type: "text", text: '{"status":"ok","summary":"healthy","actions":[]}' }],
+        choices: [{ message: { content: '{"status":"ok","summary":"healthy","actions":[]}' } }],
+        response: '{"status":"ok","summary":"healthy","actions":[]}',
       }),
     });
 

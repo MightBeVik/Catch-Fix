@@ -14,7 +14,7 @@ const navItems = [
 
 export function AppLayout({ role, setRole, theme, setTheme }) {
   const [meta, setMeta] = useState(null);
-  const connectionReady = Boolean(meta?.runtime?.anthropic_configured);
+  const supportedProviders = meta?.runtime?.supported_providers || [];
 
   useEffect(() => {
     fetchMeta().then(setMeta).catch(() => setMeta(null));
@@ -27,7 +27,7 @@ export function AppLayout({ role, setRole, theme, setTheme }) {
           <p className="brand-mark">Catch-Fix</p>
           <h1 className="brand-title">AI Operations Control Room</h1>
           <p className="brand-copy">
-              React client with simulated auth, governance-aware workflows, and a backend-only Claude integration.
+              React client with simulated auth, governance-aware workflows, and backend-only multi-provider LLM routing.
           </p>
         </div>
 
@@ -82,8 +82,8 @@ export function AppLayout({ role, setRole, theme, setTheme }) {
             </label>
 
             <div className="connection-chip">
-              <span className={["status-dot", connectionReady ? "status-dot--live" : "status-dot--critical"].join(" ")} />
-              <span>{connectionReady ? "Claude ready" : "Claude offline"}</span>
+              <span className={["status-dot", supportedProviders.length ? "status-dot--live" : "status-dot--critical"].join(" ")} />
+              <span>{supportedProviders.length ? "Local + cloud adapters" : "No adapters loaded"}</span>
             </div>
 
             <label className="role-switcher">
@@ -104,19 +104,19 @@ export function AppLayout({ role, setRole, theme, setTheme }) {
         </header>
 
         <main className="content-wrap">
-          {meta && !meta.runtime?.anthropic_configured ? (
+          {meta ? (
             <div className="callout callout--warning">
               <span className="status-dot status-dot--warning" />
               <div>
                 <div className="field-label">Runtime Notice</div>
                 <div className="section-copy" style={{ marginTop: 4 }}>
-                  Anthropic is not configured. Claude-backed actions are disabled until ANTHROPIC_API_KEY is set in server/.env.
+                  Cloud providers use server-side env vars. LM Studio and Ollama can run without API keys if their local endpoints are reachable.
                 </div>
               </div>
             </div>
           ) : null}
 
-          <div style={{ marginTop: meta && !meta.runtime?.anthropic_configured ? 24 : 0 }}>
+          <div style={{ marginTop: meta ? 24 : 0 }}>
             <Outlet context={{ role, canEdit: canEdit(role), meta }} />
           </div>
         </main>

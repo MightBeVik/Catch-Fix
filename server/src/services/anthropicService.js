@@ -1,6 +1,36 @@
 import { appConfig } from "../config.js";
 import { createHttpError } from "../lib/httpError.js";
 
+const supportedProviders = [
+  {
+    id: "anthropic",
+    name: "Anthropic Claude",
+    category: "cloud",
+    interface: "anthropic-rest",
+    default_model: appConfig.anthropicModel,
+    default_endpoint: appConfig.anthropicEndpoint,
+    default_api_key_env_var: "ANTHROPIC_API_KEY",
+  },
+  {
+    id: "openai-compatible",
+    name: "OpenAI-Compatible",
+    category: "local-or-cloud",
+    interface: "openai-chat-completions",
+    default_model: appConfig.openAiModel,
+    default_endpoint: appConfig.openAiEndpoint,
+    default_api_key_env_var: "OPENAI_API_KEY",
+  },
+  {
+    id: "ollama",
+    name: "Ollama",
+    category: "local",
+    interface: "ollama-generate",
+    default_model: appConfig.ollamaModel,
+    default_endpoint: appConfig.ollamaEndpoint,
+    default_api_key_env_var: "",
+  },
+];
+
 function extractText(payload) {
   const content = Array.isArray(payload?.content) ? payload.content : [];
   return content
@@ -10,18 +40,134 @@ function extractText(payload) {
     .trim();
 }
 
-export async function callAnthropic({ prompt, system, model, maxTokens = 400, endpoint }) {
-  if (!appConfig.anthropicApiKey) {
-    throw createHttpError(503, "ANTHROPIC_API_KEY is not configured on the server.");
+function extractOpenAiCompatibleText(payload) {
+  const choice = Array.isArray(payload?.choices) ? payload.choices[0] : null;
+  const content = choice?.message?.content;
+  if (typeof content === "string") {
+    return content.trim();
   }
 
-  const targetEndpoint = endpoint || appConfig.anthropicEndpoint;
-  const requestBody = {
-    model: model || appConfig.anthropicModel,
-    max_tokens: maxTokens,
-    system,
-    messages: [{ role: "user", content: prompt }],
+  if (Array.isArray(content)) {
+    return content
+      .filter((item) => item?.type === "text")
+      .map((item) => item.text)
+      .join("\n")
+      .trim();
+  }
+
+  return "";
+}
+
+function extractOllamaText(payload) {
+  return String(payload?.response || "").trim();
+}
+
+function getProviderPreset(providerType) {
+  return supportedProviders.find((provider) => provider.id === providerType) || supportedProviders[0];
+}
+
+function normalizeServiceConfig(service = {}) {
+  const provider = getProviderPreset(service.provider_type || "anthropic");
+  return {
+    ...service,
+    provider_type: provider.id,
+    model_name: service.model_name || provider.default_model,
+    api_endpoint: service.api_endpoint || provider.default_endpoint,
+    api_key_env_var: service.api_key_env_var ?? "",
   };
+}
+
+function resolveApiKey(service) {
+  const normalized = normalizeServiceConfig(service);
+  if (normalized.provider_type === "anthropic") {
+    return process.env[normalized.api_key_env_var || "ANTHROPIC_API_KEY"] || "";
+  }
+  if (normalized.provider_type === "openai-compatible") {
+    return normalized.api_key_env_var ? process.env[normalized.api_key_env_var] || "" : "";
+  }
+  return "";
+}
+
+export function getServiceConnectionStatus(service) {
+  const normalized = normalizeServiceConfig(service);
+  if (normalized.provider_type === "anthropic") {
+    const envVarName = normalized.api_key_env_var || "ANTHROPIC_API_KEY";
+    const configured = Boolean(process.env[envVarName]);
+    return {
+      provider_type: normalized.provider_type,
+      provider_name: getProviderPreset(normalized.provider_type).name,
+      connection_ready: configured,
+      connection_message: configured
+        ? `Using ${envVarName} for Anthropic authentication.`
+        : `Set ${envVarName} in server/.env to enable Anthropic requests.`,
+    };
+  }
+
+  if (normalized.provider_type === "openai-compatible") {
+    if (normalized.api_key_env_var) {
+      const configured = Boolean(process.env[normalized.api_key_env_var]);
+      return {
+        provider_type: normalized.provider_type,
+        provider_name: getProviderPreset(normalized.provider_type).name,
+        connection_ready: configured,
+        connection_message: configured
+          ? `Using ${normalized.api_key_env_var} for OpenAI-compatible authentication.`
+          : `Set ${normalized.api_key_env_var} in server/.env or clear the field for an unauthenticated local endpoint.`,
+      };
+    }
+
+    return {
+      provider_type: normalized.provider_type,
+      provider_name: getProviderPreset(normalized.provider_type).name,
+      connection_ready: true,
+      connection_message: "No API key configured. Suitable for LM Studio or another unauthenticated local OpenAI-compatible endpoint.",
+    };
+  }
+
+  return {
+    provider_type: normalized.provider_type,
+    provider_name: getProviderPreset(normalized.provider_type).name,
+    connection_ready: true,
+    connection_message: "Ollama uses the configured local REST endpoint and does not require an API key.",
+  };
+}
+
+export function decorateServiceConnectionStatus(service) {
+  return {
+    ...normalizeServiceConfig(service),
+    ...getServiceConnectionStatus(service),
+  };
+}
+
+export function getRuntimeProviderStatus() {
+  return {
+    supported_providers: supportedProviders,
+    secrets: {
+      ANTHROPIC_API_KEY: Boolean(appConfig.anthropicApiKey),
+      OPENAI_API_KEY: Boolean(appConfig.openAiApiKey),
+    },
+    defaults: {
+      anthropic_endpoint: appConfig.anthropicEndpoint,
+      openai_compatible_endpoint: appConfig.openAiEndpoint,
+      ollama_endpoint: appConfig.ollamaEndpoint,
+    },
+  };
+}
+
+export async function callAnthropic({ service, prompt, system, model, maxTokens = 400, endpoint }) {
+  const normalized = normalizeServiceConfig({
+    ...service,
+    model_name: model || service?.model_name,
+    api_endpoint: endpoint || service?.api_endpoint,
+  });
+  const provider = normalized.provider_type;
+
+  if (!supportedProviders.some((item) => item.id === provider)) {
+    throw createHttpError(400, `Unsupported provider type: ${provider}.`);
+  }
+
+  const targetEndpoint = normalized.api_endpoint;
+  const requestSpec = buildProviderRequest({ provider, service: normalized, prompt, system, maxTokens });
 
   let lastError = null;
   for (let attempt = 1; attempt <= appConfig.anthropicMaxRetries + 1; attempt += 1) {
@@ -32,12 +178,8 @@ export async function callAnthropic({ prompt, system, model, maxTokens = 400, en
     try {
       const response = await fetch(targetEndpoint, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": appConfig.anthropicApiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify(requestBody),
+        headers: requestSpec.headers,
+        body: JSON.stringify(requestSpec.body),
         signal: controller.signal,
       });
 
@@ -63,7 +205,7 @@ export async function callAnthropic({ prompt, system, model, maxTokens = 400, en
       const latencyMs = Math.round(performance.now() - started);
       return {
         latency_ms: latencyMs,
-        text: extractText(payload),
+        text: requestSpec.extractText(payload),
         raw: payload,
         attempts: attempt,
       };
@@ -83,15 +225,14 @@ export async function callAnthropic({ prompt, system, model, maxTokens = 400, en
     }
   }
 
-  throw lastError || createHttpError(502, "Anthropic API request failed.");
+  throw lastError || createHttpError(502, "LLM provider request failed.");
 }
 
 export async function testServiceConnection(service, prompt) {
   const result = await callAnthropic({
+    service,
     prompt,
     system: "Reply very briefly to confirm connectivity.",
-    model: service.model_name,
-    endpoint: service.api_endpoint,
     maxTokens: 32,
   });
 
@@ -103,7 +244,7 @@ export async function testServiceConnection(service, prompt) {
   };
 }
 
-export async function draftIncidentSummary({ serviceName, severity, symptoms, timeline, checklist }) {
+export async function draftIncidentSummary({ service, serviceName, severity, symptoms, timeline, checklist }) {
   const prompt = [
     "Create a concise stakeholder update and likely root causes for this AI service incident.",
     "Do not recommend auto-remediation. Human approval is required before saving.",
@@ -116,6 +257,12 @@ export async function draftIncidentSummary({ serviceName, severity, symptoms, ti
   ].join("\n");
 
   const result = await callAnthropic({
+    service: service || {
+      provider_type: "anthropic",
+      model_name: appConfig.anthropicModel,
+      api_endpoint: appConfig.anthropicEndpoint,
+      api_key_env_var: "ANTHROPIC_API_KEY",
+    },
     prompt,
     system: "You are an AI operations incident analyst drafting review-only content.",
     maxTokens: 500,
@@ -128,7 +275,7 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function draftRollbackPlan({ serviceName, riskLevel, validationSteps }) {
+export async function draftRollbackPlan({ service, serviceName, riskLevel, validationSteps }) {
   const prompt = [
     "Draft a rollback plan for a planned AI service maintenance activity.",
     `Service: ${serviceName}`,
@@ -138,10 +285,76 @@ export async function draftRollbackPlan({ serviceName, riskLevel, validationStep
   ].join("\n");
 
   const result = await callAnthropic({
+    service: service || {
+      provider_type: "anthropic",
+      model_name: appConfig.anthropicModel,
+      api_endpoint: appConfig.anthropicEndpoint,
+      api_key_env_var: "ANTHROPIC_API_KEY",
+    },
     prompt,
     system: "You are drafting a rollback plan for human review only.",
     maxTokens: 300,
   });
 
   return result.text;
+}
+
+function buildProviderRequest({ provider, service, prompt, system, maxTokens }) {
+  if (provider === "anthropic") {
+    const apiKey = resolveApiKey(service);
+    if (!apiKey) {
+      throw createHttpError(503, `Set ${service.api_key_env_var || "ANTHROPIC_API_KEY"} in server/.env to enable Anthropic requests.`);
+    }
+
+    return {
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: {
+        model: service.model_name,
+        max_tokens: maxTokens,
+        system,
+        messages: [{ role: "user", content: prompt }],
+      },
+      extractText,
+    };
+  }
+
+  if (provider === "openai-compatible") {
+    const apiKey = resolveApiKey(service);
+    const headers = {
+      "Content-Type": "application/json",
+    };
+    if (apiKey) {
+      headers.Authorization = `Bearer ${apiKey}`;
+    }
+
+    return {
+      headers,
+      body: {
+        model: service.model_name,
+        messages: [
+          ...(system ? [{ role: "system", content: system }] : []),
+          { role: "user", content: prompt },
+        ],
+        max_tokens: maxTokens,
+      },
+      extractText: extractOpenAiCompatibleText,
+    };
+  }
+
+  return {
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: {
+      model: service.model_name,
+      prompt,
+      system,
+      stream: false,
+    },
+    extractText: extractOllamaText,
+  };
 }

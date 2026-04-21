@@ -5,6 +5,7 @@ import { createHttpError, sendError } from "../lib/httpError.js";
 import { requireRole } from "../middleware/role.js";
 import { createAuditLogEntry } from "../repositories/auditLogRepository.js";
 import { createIncident, getIncidentById, listIncidents, saveIncidentSummary, updateIncident } from "../repositories/incidentsRepository.js";
+import { getServiceByName } from "../repositories/servicesRepository.js";
 import { draftIncidentSummary } from "../services/anthropicService.js";
 
 export const incidentsRouter = Router();
@@ -81,7 +82,9 @@ incidentsRouter.post("/:id/generate-summary", requireRole("Admin", "Maintainer")
     if (!incident) {
       throw createHttpError(404, "Incident not found.");
     }
+    const service = getServiceByName(incident.service_name);
     const summary = await draftIncidentSummary({
+      service,
       serviceName: incident.service_name,
       severity: incident.severity,
       symptoms: incident.symptoms,

@@ -10,6 +10,7 @@ import { listAuditLog } from "../repositories/auditLogRepository.js";
 import { listIncidentsForExport } from "../repositories/incidentsRepository.js";
 import { listMaintenancePlansForExport } from "../repositories/maintenanceRepository.js";
 import { listEvaluationsForExport } from "../repositories/monitoringRepository.js";
+import { getRuntimeProviderStatus } from "../services/anthropicService.js";
 
 export const governanceRouter = Router();
 
@@ -26,7 +27,7 @@ governanceRouter.get("/policy", (_request, response) => {
       "Maintenance plans and audit log entries",
     ],
     prompts_logged: "Prompts are not retained beyond evaluation and incident workflow result details needed for governance records.",
-    llm_routing: "LLM requests are routed from the backend to Anthropic Claude over cloud API calls. API keys never leave the server.",
+    llm_routing: "LLM requests are routed from the backend through Anthropic, OpenAI-compatible, and Ollama adapters. API keys, when required, never leave the server.",
     retention: "SQLite data is stored locally in the server data directory for this course project and retained until manually removed.",
   });
 });
@@ -36,12 +37,12 @@ governanceRouter.get("/audit-log", (request, response) => {
 });
 
 governanceRouter.get("/runtime-status", (_request, response) => {
+  const runtime = getRuntimeProviderStatus();
   response.json({
     runtime: {
-      anthropic_configured: Boolean(appConfig.anthropicApiKey),
-      anthropic_model: appConfig.anthropicModel,
-      anthropic_timeout_ms: appConfig.anthropicTimeoutMs,
-      anthropic_max_retries: appConfig.anthropicMaxRetries,
+      ...runtime,
+      request_timeout_ms: appConfig.anthropicTimeoutMs,
+      request_max_retries: appConfig.anthropicMaxRetries,
       drift_threshold: appConfig.driftThreshold,
       demo_seed_data: String(process.env.DEMO_SEED_DATA ?? "true").toLowerCase() !== "false",
     },

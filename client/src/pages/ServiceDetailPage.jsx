@@ -8,12 +8,10 @@ function EmptyState({ children }) {
 }
 
 export function ServiceDetailPage() {
-  const { canEdit, meta } = useOutletContext();
+  const { canEdit } = useOutletContext();
   const { serviceId } = useParams();
   const [overview, setOverview] = useState(null);
   const [status, setStatus] = useState("");
-
-  const anthropicReady = Boolean(meta?.runtime?.anthropic_configured);
 
   async function loadOverview() {
     const data = await fetchServiceOverview(serviceId);
@@ -66,19 +64,23 @@ export function ServiceDetailPage() {
           </Link>
           <h3 className="page-title" style={{ marginTop: 16 }}>{service.name}</h3>
           <p className="page-description">
-            Owner {service.owner} · {service.environment.toUpperCase()} · {service.model_name} · sensitivity {service.sensitivity}
+            Owner {service.owner} · {service.environment.toUpperCase()} · {service.provider_name || service.provider_type} · {service.model_name} · sensitivity {service.sensitivity}
           </p>
           <div className="badge-row" style={{ marginTop: 12 }}>
+            <span className="status-badge status-badge--info">{service.provider_name || service.provider_type}</span>
             <span className="status-badge status-badge--info">{service.environment}</span>
             <span className="status-badge status-badge--neutral">{service.sensitivity}</span>
+            <span className={`status-badge ${service.connection_ready ? "status-badge--healthy" : "status-badge--warning"}`}>{service.connection_ready ? "ready" : "needs config"}</span>
           </div>
+          <div className="section-copy" style={{ marginTop: 12 }}>{service.connection_message}</div>
+          <div className="mono" style={{ marginTop: 12 }}>{service.api_key_env_var || "No server auth env var configured"}</div>
           <div className="mono" style={{ marginTop: 12 }}>{service.api_endpoint}</div>
         </div>
         <button
           className="button button-secondary"
-          disabled={!canEdit || !anthropicReady}
+          disabled={!canEdit || !service.connection_ready}
           onClick={handleTestConnection}
-          title={anthropicReady ? "" : "Set ANTHROPIC_API_KEY in server/.env to enable connection tests."}
+          title={service.connection_ready ? "" : service.connection_message}
           type="button"
         >
           Test connection

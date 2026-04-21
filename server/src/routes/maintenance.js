@@ -79,11 +79,14 @@ maintenanceRouter.put("/plans/:id", requireRole("Admin", "Maintainer"), (request
 maintenanceRouter.post("/draft-rollback", requireRole("Admin", "Maintainer"), async (request, response) => {
   try {
     const payload = z.object({
+      service_id: z.number().int().positive().optional(),
       service_name: z.string().min(2),
       risk_level: z.enum(["low", "medium", "high"]),
       validation_steps: z.string().min(5),
     }).parse(request.body);
+    const service = payload.service_id ? getServiceById(payload.service_id) : null;
     const rollback_plan = await draftRollbackPlan({
+      service,
       serviceName: payload.service_name,
       riskLevel: payload.risk_level,
       validationSteps: payload.validation_steps,

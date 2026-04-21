@@ -47,13 +47,6 @@ export async function triggerEvaluationJobNow(triggeredBy = "manual") {
   lastRunStatus = "running";
 
   try {
-    if (!appConfig.anthropicApiKey) {
-      lastRunCompletedAt = new Date().toISOString();
-      lastRunStatus = "skipped";
-      lastRunError = "Anthropic is not configured.";
-      return getEvaluationJobStatus();
-    }
-
     if (services.length > 0) {
       await runScheduledEvaluationForAllServices(services, triggeredBy);
     }

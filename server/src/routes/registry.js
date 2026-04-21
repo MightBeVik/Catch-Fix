@@ -8,7 +8,7 @@ import { listIncidentsByServiceName } from "../repositories/incidentsRepository.
 import { listMaintenancePlansByService } from "../repositories/maintenanceRepository.js";
 import { listRecentEvaluationsForService, listRecentMetricsForService } from "../repositories/monitoringRepository.js";
 import { createService, deleteService, getServiceById, listServices, updateService } from "../repositories/servicesRepository.js";
-import { testServiceConnection } from "../services/anthropicService.js";
+import { decorateServiceConnectionStatus, testServiceConnection } from "../services/anthropicService.js";
 
 export const registryRouter = Router();
 
@@ -16,13 +16,15 @@ const serviceSchema = z.object({
   name: z.string().min(2),
   owner: z.string().min(2),
   environment: z.enum(["dev", "prod"]),
+  provider_type: z.enum(["anthropic", "openai-compatible", "ollama"]).default("anthropic"),
   model_name: z.string().min(2),
   sensitivity: z.enum(["public", "internal", "confidential"]),
   api_endpoint: z.string().url(),
+  api_key_env_var: z.string().max(100).optional().transform((value) => (value || "").trim()),
 });
 
 registryRouter.get("/services", (_request, response) => {
-  response.json({ items: listServices() });
+  response.json({ items: listServices().map(decorateServiceConnectionStatus) });
 });
 
 registryRouter.get("/services/:id", (request, response, next) => {
@@ -31,7 +33,7 @@ registryRouter.get("/services/:id", (request, response, next) => {
     if (!service) {
       throw createHttpError(404, "Service not found.");
     }
-    response.json(service);
+    response.json(decorateServiceConnectionStatus(service));
   } catch (error) {
     sendError(response, error);
     next();
@@ -51,7 +53,7 @@ registryRouter.get("/services/:id/overview", (request, response, next) => {
     const maintenancePlans = listMaintenancePlansByService(service.id, 8);
 
     response.json({
-      service,
+      service: decorateServiceConnectionStatus(service),
       metrics,
       evaluations,
       incidents,
@@ -142,7 +144,7 @@ registryRouter.post("/services/:id/test-connection", requireRole("Admin", "Maint
       entityId: service.id,
       newValue: result,
     });
-    response.json({ service, test_result: result });
+    response.json({ service: decorateServiceConnectionStatus(service), test_result: result });
   } catch (error) {
     sendError(response, error);
   }

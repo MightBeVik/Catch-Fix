@@ -19,9 +19,11 @@ export function initializeDatabase() {
       name TEXT NOT NULL,
       owner TEXT NOT NULL,
       environment TEXT NOT NULL CHECK(environment IN ('dev', 'prod')),
+      provider_type TEXT NOT NULL DEFAULT 'anthropic',
       model_name TEXT NOT NULL,
       sensitivity TEXT NOT NULL CHECK(sensitivity IN ('public', 'internal', 'confidential')),
       api_endpoint TEXT NOT NULL,
+      api_key_env_var TEXT,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -81,6 +83,9 @@ export function initializeDatabase() {
       timestamp TEXT NOT NULL
     );
   `);
+
+  ensureColumn("services", "provider_type", "TEXT NOT NULL DEFAULT 'anthropic'");
+  ensureColumn("services", "api_key_env_var", "TEXT");
 }
 
 export function clearOperationalData() {
@@ -107,25 +112,31 @@ export function seedDemoData({ force = false } = {}) {
       name: "Claude Ops Assistant",
       owner: "AIM Team",
       environment: "dev",
+      provider_type: "anthropic",
       model_name: "claude-sonnet-4-20250514",
       sensitivity: "internal",
       api_endpoint: "https://api.anthropic.com/v1/messages",
+      api_key_env_var: "ANTHROPIC_API_KEY",
     },
     {
       name: "Claims Triage Bot",
       owner: "Platform Reliability",
       environment: "prod",
-      model_name: "claude-sonnet-4-20250514",
+      provider_type: "openai-compatible",
+      model_name: "gpt-4.1-mini",
       sensitivity: "confidential",
-      api_endpoint: "https://api.anthropic.com/v1/messages",
+      api_endpoint: "http://127.0.0.1:1234/v1/chat/completions",
+      api_key_env_var: null,
     },
     {
       name: "Policy Review Copilot",
       owner: "Governance Office",
       environment: "prod",
-      model_name: "claude-sonnet-4-20250514",
+      provider_type: "ollama",
+      model_name: "llama3.2",
       sensitivity: "internal",
-      api_endpoint: "https://api.anthropic.com/v1/messages",
+      api_endpoint: "http://127.0.0.1:11434/api/generate",
+      api_key_env_var: null,
     },
   ];
 
@@ -159,6 +170,13 @@ function getCount(tableName) {
   return db.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get().count;
 }
 
+function ensureColumn(tableName, columnName, definition) {
+  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all();
+  if (!columns.some((column) => column.name === columnName)) {
+    db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
+  }
+}
+
 function ensureService(service) {
   const existing = db.prepare(`SELECT * FROM services WHERE name = ?`).get(service.name);
   if (existing) {
@@ -167,15 +185,17 @@ function ensureService(service) {
 
   const createdAt = hoursAgoIso(72);
   const result = db.prepare(`
-    INSERT INTO services (name, owner, environment, model_name, sensitivity, api_endpoint, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO services (name, owner, environment, provider_type, model_name, sensitivity, api_endpoint, api_key_env_var, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     service.name,
     service.owner,
     service.environment,
+    service.provider_type || "anthropic",
     service.model_name,
     service.sensitivity,
     service.api_endpoint,
+    service.api_key_env_var || null,
     createdAt,
   );
 

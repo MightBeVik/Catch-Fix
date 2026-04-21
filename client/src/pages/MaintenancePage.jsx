@@ -14,7 +14,7 @@ const blankPlan = {
 };
 
 export function MaintenancePage() {
-  const { canEdit, meta } = useOutletContext();
+  const { canEdit } = useOutletContext();
   const [plans, setPlans] = useState([]);
   const [services, setServices] = useState([]);
   const [form, setForm] = useState(blankPlan);
@@ -38,7 +38,7 @@ export function MaintenancePage() {
   }, [form.service_id, services]);
 
   const serviceNameById = Object.fromEntries(services.map((service) => [service.id, service.name]));
-  const anthropicReady = Boolean(meta?.runtime?.anthropic_configured);
+  const selectedService = services.find((service) => service.id === Number(form.service_id));
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -62,6 +62,7 @@ export function MaintenancePage() {
     try {
       const service = services.find((item) => item.id === Number(form.service_id));
       const result = await draftRollbackPlan({
+        service_id: Number(form.service_id),
         service_name: service?.name || "Unknown service",
         risk_level: form.risk_level,
         validation_steps: form.validation_steps,
@@ -106,7 +107,7 @@ export function MaintenancePage() {
             <button className="button button-primary" disabled={!canEdit} type="submit">
               {editingId ? "Save plan" : "Create plan"}
             </button>
-            <button className="button button-secondary" disabled={!canEdit || !anthropicReady} onClick={handleDraftRollback} title={anthropicReady ? "" : "Set ANTHROPIC_API_KEY in server/.env to enable rollback drafting."} type="button">
+            <button className="button button-secondary" disabled={!canEdit || !selectedService?.connection_ready} onClick={handleDraftRollback} title={selectedService?.connection_ready ? "" : selectedService?.connection_message || "Select a configured service to draft a rollback plan."} type="button">
               Draft rollback
             </button>
           </div>

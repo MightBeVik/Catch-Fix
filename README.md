@@ -1,11 +1,11 @@
 # Catch-Fix AI Operations Control Room
 
-Catch-Fix is an AI Operations Control Room built for ARTI-409-A AI Systems & Governance. The new course-deliverable implementation lives in the root-level `client` and `server` folders and uses React, Tailwind CSS, Node.js, Express, SQLite, Anthropic Claude via REST, and node-cron.
+Catch-Fix is an AI Operations Control Room built for ARTI-409-A AI Systems & Governance. The new course-deliverable implementation lives in the root-level `client` and `server` folders and uses React, Tailwind CSS, Node.js, Express, SQLite, multi-provider LLM adapters, and node-cron.
 
 ## Project Structure
 
 - `client/`: React + Vite + Tailwind frontend
-- `server/`: Express API, SQLite initialization, RBAC middleware, scheduled evaluation job, Anthropic integration, and tests
+- `server/`: Express API, SQLite initialization, RBAC middleware, scheduled evaluation job, provider adapters for Anthropic, OpenAI-compatible APIs, Ollama, and tests
 - `app/` and `frontend/`: earlier FastAPI and legacy frontend reference code retained for comparison during the rebuild
 
 ## Environment Variables
@@ -23,6 +23,11 @@ Optional:
 - `DEMO_SEED_DATA`: seeds realistic demo records on startup when the database is empty or partially uninitialized, default `true`
 - `ANTHROPIC_MODEL`: Claude model name, default `claude-sonnet-4-20250514`
 - `ANTHROPIC_ENDPOINT`: Anthropic REST endpoint, default `https://api.anthropic.com/v1/messages`
+- `OPENAI_API_KEY`: API key for OpenAI-compatible cloud providers when a service references that env var
+- `OPENAI_MODEL`: default model preset for OpenAI-compatible services, default `gpt-4.1-mini`
+- `OPENAI_ENDPOINT`: default OpenAI-compatible endpoint preset, default `https://api.openai.com/v1/chat/completions`
+- `OLLAMA_MODEL`: default Ollama model preset, default `llama3.2`
+- `OLLAMA_ENDPOINT`: default Ollama endpoint preset, default `http://127.0.0.1:11434/api/generate`
 - `ANTHROPIC_TIMEOUT_MS`: per-request timeout for Claude calls, default `15000`
 - `ANTHROPIC_MAX_RETRIES`: retry count for transient Claude failures, default `2`
 - `EVALUATION_CRON`: node-cron expression for scheduled evaluations, default `*/30 * * * *`
@@ -32,7 +37,7 @@ Optional:
 
 1. Clone the repository.
 2. From the repository root, run `npm install`.
-3. Create `server/.env`. If you do not set `ANTHROPIC_API_KEY`, the app still runs with seeded demo data but Claude-backed actions stay disabled in the UI.
+3. Create `server/.env`. If you do not set cloud API keys, the app still runs with seeded demo data and local-provider presets remain available.
 4. Start the full application from the repository root with `npm run dev`.
 
 The development servers run at:
@@ -50,7 +55,17 @@ On startup, the server seeds a small control-room dataset unless `DEMO_SEED_DATA
 - approved maintenance plans
 - audit log activity for governance export and review screens
 
-This makes the application immediately explorable before any manual data entry or Anthropic key setup.
+This makes the application immediately explorable before any manual data entry or cloud API key setup.
+
+## Model Connectivity
+
+The registry supports three provider modes per service:
+
+- `anthropic`: Anthropic Claude via the Messages API and a server-side env var
+- `openai-compatible`: OpenAI, LM Studio, or any provider exposing a chat-completions compatible endpoint
+- `ollama`: local Ollama REST generation endpoint
+
+This means you can register local models and cloud models side by side. Each service stores its own provider type, model name, endpoint, and optional server env var name for auth.
 
 ## Governance Console
 
@@ -85,7 +100,7 @@ Current automated coverage includes:
 
 ## Human In The Loop
 
-Claude output is only used to:
+LLM output is only used to:
 
 - draft incident summaries
 - suggest likely root causes

@@ -22,7 +22,7 @@ const blankForm = {
 };
 
 export function IncidentsPage() {
-  const { canEdit, meta } = useOutletContext();
+  const { canEdit } = useOutletContext();
   const [incidents, setIncidents] = useState([]);
   const [services, setServices] = useState([]);
   const [form, setForm] = useState(blankForm);
@@ -46,7 +46,7 @@ export function IncidentsPage() {
   }, [form.service_name, services]);
 
   const serviceIdByName = Object.fromEntries(services.map((service) => [service.name, service.id]));
-  const anthropicReady = Boolean(meta?.runtime?.anthropic_configured);
+  const selectedService = services.find((service) => service.name === form.service_name);
 
   async function handleCreate(event) {
     event.preventDefault();
@@ -85,7 +85,7 @@ export function IncidentsPage() {
       <div>
         <h3 className="page-title">Incident Triage</h3>
         <p className="page-description">
-          Create incidents, mark troubleshooting hypotheses, generate review-only Claude summaries, and explicitly approve before persistence.
+          Create incidents, mark troubleshooting hypotheses, generate review-only LLM summaries, and explicitly approve before persistence.
         </p>
       </div>
 
@@ -169,7 +169,13 @@ export function IncidentsPage() {
                 />
               </div>
               <div className="button-row">
-                <button className="button button-secondary" disabled={!canEdit || !anthropicReady} onClick={() => handleGenerateSummary(incident.id)} title={anthropicReady ? "" : "Set ANTHROPIC_API_KEY in server/.env to enable summary generation."} type="button">
+                <button
+                  className="button button-secondary"
+                  disabled={!canEdit || !services.find((service) => service.name === incident.service_name)?.connection_ready}
+                  onClick={() => handleGenerateSummary(incident.id)}
+                  title={services.find((service) => service.name === incident.service_name)?.connection_ready ? "" : services.find((service) => service.name === incident.service_name)?.connection_message || "Select a configured service to generate a summary."}
+                  type="button"
+                >
                   Generate summary
                 </button>
                 <button className="button button-primary" disabled={!canEdit || !drafts[incident.id]} onClick={() => handleApprove(incident.id)} type="button">

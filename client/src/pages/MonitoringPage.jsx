@@ -4,13 +4,12 @@ import { Link, useOutletContext } from "react-router-dom";
 import { fetchDashboard, fetchEvaluations, runEvaluation } from "../api/monitoring";
 
 export function MonitoringPage() {
-  const { canEdit, meta } = useOutletContext();
+  const { canEdit } = useOutletContext();
   const [dashboard, setDashboard] = useState(null);
   const [evaluations, setEvaluations] = useState([]);
   const [status, setStatus] = useState("");
 
   const serviceNameById = Object.fromEntries((dashboard?.services || []).map((service) => [service.id, service.name]));
-  const anthropicReady = Boolean(meta?.runtime?.anthropic_configured);
 
   async function load() {
     const [dashboardData, evaluationsData] = await Promise.all([fetchDashboard(), fetchEvaluations()]);
@@ -142,9 +141,9 @@ export function MonitoringPage() {
                   <td>
                     <button
                       className="button button-primary"
-                      disabled={!canEdit || !anthropicReady}
+                      disabled={!canEdit || !service.connection_ready}
                       onClick={() => handleRun(service.id)}
-                      title={anthropicReady ? "" : "Set ANTHROPIC_API_KEY in server/.env to enable evaluations."}
+                      title={service.connection_ready ? "" : service.connection_message}
                       type="button"
                     >
                       Run evaluation

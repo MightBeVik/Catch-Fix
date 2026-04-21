@@ -2,7 +2,7 @@ import { appConfig } from "../config.js";
 import { createIncident } from "../repositories/incidentsRepository.js";
 import { createAuditLogEntry } from "../repositories/auditLogRepository.js";
 import { createEvaluation, createMetric, listRecentEvaluations } from "../repositories/monitoringRepository.js";
-import { callAnthropic } from "./anthropicService.js";
+import { callAnthropic, decorateServiceConnectionStatus } from "./anthropicService.js";
 import { nowIso } from "../lib/time.js";
 
 const piiPatterns = {
@@ -59,10 +59,9 @@ export async function runEvaluationForService(service, triggeredBy = "manual") {
   ].join("\n");
 
   const llmResult = await callAnthropic({
+    service,
     prompt,
     system: "You are producing machine-readable evaluation output for an AI service.",
-    model: service.model_name,
-    endpoint: service.api_endpoint,
     maxTokens: 200,
   });
 
@@ -161,12 +160,13 @@ export function buildMonitoringOverview(services, latestMetrics, latestEvaluatio
   }
 
   const serviceRows = services.map((service) => {
+    const decoratedService = decorateServiceConnectionStatus(service);
     const metric = metricMap.get(service.id);
     const evaluations = evaluationMap.get(service.id) || [];
     const qualityScore = metric?.quality_score ?? null;
 
     return {
-      ...service,
+      ...decoratedService,
       latest_metric: metric,
       latest_evaluations: evaluations,
       drift_flagged: qualityScore !== null ? qualityScore < appConfig.driftThreshold : false,
