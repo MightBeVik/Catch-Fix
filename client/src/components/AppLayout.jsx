@@ -15,7 +15,7 @@ const navItems = [
   { to: "/settings", label: "Settings" },
 ];
 
-export function AppLayout({ role, user, onLogout, theme, setTheme }) {
+export function AppLayout({ role, user, onLogout, onUserUpdate, theme, setTheme }) {
   const [meta, setMeta] = useState(null);
   const supportedProviders = meta?.runtime?.supported_providers || [];
 
@@ -37,7 +37,7 @@ export function AppLayout({ role, user, onLogout, theme, setTheme }) {
         <div className="sidebar-section">
           <div className="field-label">Signed in as</div>
           <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
-            <span className="brand-copy" style={{ margin: 0 }}>{user?.name ?? role}</span>
+            <span className="brand-copy" style={{ margin: 0 }}>{user?.username ?? role}</span>
             <span className={`role-badge role-badge--${role?.toLowerCase()}`}>{role}</span>
           </div>
           <div className="brand-copy" style={{ marginTop: 8 }}>
@@ -115,7 +115,7 @@ export function AppLayout({ role, user, onLogout, theme, setTheme }) {
           ) : null}
 
           <div style={{ marginTop: meta ? 24 : 0 }}>
-            <Outlet context={{ role, user, canEdit: canEdit(role), meta }} />
+            <Outlet context={{ role, user, canEdit: canEdit(role), meta, onUserUpdate }} />
           </div>
         </main>
       </div>

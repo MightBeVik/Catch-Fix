@@ -6,12 +6,15 @@ import { clearStoredAuth, getStoredAuth, setStoredAuth } from "./lib/roles";
 import { applyTheme, DEFAULT_THEME, getStoredTheme, setStoredTheme } from "./lib/theme";
 import { AcceptInvitePage } from "./pages/AcceptInvitePage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ForgotUsernamePage } from "./pages/ForgotUsernamePage";
 import { GovernancePage } from "./pages/GovernancePage";
 import { IncidentsPage } from "./pages/IncidentsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { MaintenancePage } from "./pages/MaintenancePage";
 import { MonitoringPage } from "./pages/MonitoringPage";
 import { RegistryPage } from "./pages/RegistryPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { SecurityPage } from "./pages/SecurityPage";
 import { ServiceDetailPage } from "./pages/ServiceDetailPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -34,6 +37,15 @@ export default function App() {
     setAuth(null);
   }
 
+  function handleUserUpdate(user) {
+    setAuth((current) => {
+      if (!current) return current;
+      const next = { ...current, user };
+      setStoredAuth(next);
+      return next;
+    });
+  }
+
   const user = auth?.user ?? null;
   const role = user?.role ?? null;
 
@@ -48,11 +60,14 @@ export default function App() {
         }
       />
       <Route path="/accept-invite" element={<AcceptInvitePage />} />
+      <Route path="/forgot-username" element={<ForgotUsernamePage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       <Route
         element={
           auth
-            ? <AppLayout role={role} user={user} onLogout={handleLogout} theme={theme} setTheme={setTheme} />
+            ? <AppLayout role={role} user={user} onLogout={handleLogout} onUserUpdate={handleUserUpdate} theme={theme} setTheme={setTheme} />
             : <Navigate to="/login" replace />
         }
       >

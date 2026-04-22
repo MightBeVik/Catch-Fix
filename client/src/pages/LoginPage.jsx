@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { loginRequest } from "../api/auth";
 import { ScissorBackground } from "../components/ScissorBackground";
@@ -9,6 +9,7 @@ export function LoginPage({ onLogin }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const justInvited = searchParams.get("invited") === "1";
+  const passwordResetComplete = searchParams.get("reset") === "1";
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -34,15 +35,20 @@ export function LoginPage({ onLogin }) {
     <div className="login-shell">
       <ScissorBackground />
       <div className="login-card">
-        <div className="login-header">
-          <img src="/logo.png" alt="Overwatch" className="login-logo" />
-          <h1 className="login-title">Overwatch</h1>
-          <p className="login-subtitle">ARTI-409-A &mdash; AI Systems &amp; Governance</p>
+        <div className="login-header login-header--centered">
+          <img src="/logo.png" alt="OverWatch" className="login-logo" />
+          <h1 className="login-title login-title--big">OverWatch</h1>
         </div>
 
         {justInvited && (
           <div style={{ padding: "10px 14px", background: "var(--status-green-bg)", border: "1px solid var(--status-green)", borderRadius: "var(--radius-md)", fontSize: 13, color: "var(--status-green)" }}>
             Account created! Sign in to get started.
+          </div>
+        )}
+
+        {passwordResetComplete && (
+          <div style={{ padding: "10px 14px", background: "var(--status-green-bg)", border: "1px solid var(--status-green)", borderRadius: "var(--radius-md)", fontSize: 13, color: "var(--status-green)" }}>
+            Password updated. Sign in with your new password.
           </div>
         )}
 
@@ -89,6 +95,13 @@ export function LoginPage({ onLogin }) {
             {loading ? "Signing in…" : "Sign In"}
           </button>
         </form>
+
+        <div className="login-recovery">
+          <div className="login-recovery-actions">
+            <Link className="login-recovery-link" to="/forgot-username">Forgot username?</Link>
+            <Link className="login-recovery-link" to="/forgot-password">Forgot password?</Link>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -835,12 +835,35 @@ textarea {
 /* ── Login page ─────────────────────────────────────────── */
 
 .login-shell {
+  color-scheme: light;
+  --bg-surface: rgba(255, 255, 255, 0.82);
+  --bg-elevated: rgba(255, 255, 255, 0.96);
+  --bg-hover: #eef3f9;
+  --border: #c7d5ec;
+  --border-focus: #8ca7d3;
+  --text-primary: #111827;
+  --text-secondary: #5f6f89;
+  --text-muted: #7d8aa5;
+  --status-green: #16a34a;
+  --status-green-bg: rgba(220, 252, 231, 0.9);
+  --status-yellow: #d97706;
+  --status-yellow-bg: rgba(254, 243, 199, 0.92);
+  --status-red: #dc2626;
+  --status-red-bg: rgba(254, 226, 226, 0.95);
+  --status-gray: #64748b;
+  --status-gray-bg: rgba(148, 163, 184, 0.16);
+  --status-info-bg: rgba(219, 234, 254, 0.95);
+  --status-info-text: #1d4ed8;
+  --callout-danger-bg: rgba(255, 241, 242, 0.96);
+  --callout-warning-bg: rgba(255, 251, 235, 0.96);
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: transparent;
+  background: linear-gradient(120deg, #f8fafc 0%, #e0e7ef 100%);
+  animation: bgSweep 8s ease-in-out infinite alternate;
+  font-family: 'Inter', 'DM Sans', Arial, sans-serif;
   padding: 24px;
 }
 
@@ -849,24 +872,41 @@ textarea {
   z-index: 1;
   width: 100%;
   max-width: 420px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 36px 32px;
-  box-shadow: var(--shadow-elevated);
+  background: rgba(59, 130, 246, 0.10); /* blueish glassmorphism */
+  border: 1.5px solid rgba(59, 130, 246, 0.18);
+  border-radius: 26px;
+  padding: 40px 36px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.18), 0 0 0 2px rgba(59,130,246,0.10);
   display: grid;
-  gap: 28px;
+  gap: 32px;
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+}
+
+.login-header--centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 0 auto 18px;
+  margin-top: 0;
+  text-align: center;
+  gap: 0.65rem;
 }
 
 .login-header {
   text-align: center;
+  justify-self: center;
 }
 
 .login-logo {
-  width: 80px;
-  height: 80px;
+  width: 96px;
+  height: 96px;
   object-fit: contain;
-  margin-bottom: 8px;
+  display: block;
+  margin: 0 auto;
+  filter: drop-shadow(0 12px 24px rgba(15, 23, 42, 0.14));
 }
 
 .sidebar-logo {
@@ -880,13 +920,31 @@ textarea {
   margin: 8px 0 0;
   font-size: 22px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #eff6ff;
+  text-shadow: 0 10px 30px rgba(37, 99, 235, 0.18);
+}
+
+.login-title--big {
+  margin: 0;
+  font-size: clamp(3rem, 5vw, 3.8rem);
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.08em;
+  text-align: center;
+  text-transform: none;
+  font-family: "Space Grotesk", "Inter", "DM Sans", Arial, sans-serif;
+  background: linear-gradient(135deg, #0f172a 15%, #2563eb 55%, #60a5fa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+  text-shadow: 0 6px 24px rgba(59, 130, 246, 0.12);
 }
 
 .login-subtitle {
   margin: 8px 0 0;
   font-size: 13px;
-  color: var(--text-secondary);
+  color: rgba(71, 85, 105, 0.9);
 }
 
 .login-form {
@@ -894,14 +952,106 @@ textarea {
   gap: 16px;
 }
 
+.login-recovery {
+  display: grid;
+  gap: 14px;
+  margin-top: -8px;
+}
+
+.login-recovery-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.login-recovery-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent-blue);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.login-recovery-link:hover,
+.login-recovery-link:focus-visible {
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.login-recovery-footer {
+  display: flex;
+  justify-content: center;
+}
+
+.recovery-panel {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.46);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
+}
+
+.recovery-panel--static {
+  gap: 10px;
+}
+
+.recovery-panel__value {
+  margin: 4px 0 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .form-group {
   display: grid;
   gap: 6px;
+  background: rgba(255, 255, 255, 0.54);
+  border: 1.5px solid rgba(96, 165, 250, 0.24);
+  border-radius: 22px;
+  box-shadow: 0 16px 38px rgba(148, 163, 184, 0.18), 0 0 0 2px rgba(147, 197, 253, 0.14);
+  border-top: 1px solid rgba(255, 255, 255, 0.72);
+  padding-top: 20px;
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  transition: box-shadow 0.3s;
 }
 
-.login-demo {
-  border-top: 1px solid var(--border);
-  padding-top: 20px;
+.login-shell .input,
+.login-shell .select,
+.login-shell .textarea {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: #c7d5ec;
+  color: #111827;
+}
+
+.login-shell .input::placeholder,
+.login-shell .textarea::placeholder {
+  color: #7d8aa5;
+}
+
+.login-shell .input:focus,
+.login-shell .select:focus,
+.login-shell .textarea:focus {
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.18);
+}
+
+.login-shell .field-label {
+  color: #6b7c98;
+}
+
+.login-shell .status-message,
+.login-shell .callout,
+.login-shell .recovery-panel {
+  color: #111827;
 }
 
 .login-demo-grid {
@@ -913,12 +1063,20 @@ textarea {
 .login-demo-card {
   display: flex;
   align-items: center;
+  font-family: 'Inter', 'DM Sans', Arial, sans-serif;
+  font-weight: 700;
+  font-size: 2.1rem;
+  letter-spacing: -0.5px;
+  color: #1e293b;
   gap: 10px;
   width: 100%;
   padding: 10px 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
+  font-family: 'Inter', 'DM Sans', Arial, sans-serif;
+  font-size: 1.08rem;
+  color: #64748b;
   color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
@@ -926,9 +1084,13 @@ textarea {
   transition: background-color 150ms ease, border-color 150ms ease;
 }
 
+  transition: transform 0.5s cubic-bezier(.22,1,.36,1), filter 0.4s;
+  filter: drop-shadow(0 2px 12px rgba(59,130,246,0.10));
 .login-demo-card:hover {
   background: var(--bg-hover);
   border-color: var(--border-focus);
+  transform: scale(1.08) rotate(-4deg);
+  filter: drop-shadow(0 4px 24px rgba(59,130,246,0.18));
 }
 
 .login-demo-name {

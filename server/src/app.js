@@ -27,8 +27,7 @@ export function createApp() {
 
   // Public routes — no token required
   app.use("/api/auth", authRouter);
-  app.use("/api/invitations/validate", invitationsRouter);
-  app.use("/api/invitations/accept", invitationsRouter);
+  app.use("/api/invitations", invitationsRouter);
 
   // All other API routes require a valid JWT
   app.use("/api", requireAuth, apiRouter);

@@ -6,7 +6,6 @@ import { incidentsRouter } from "./incidents.js";
 import { maintenanceRouter } from "./maintenance.js";
 import { monitoringRouter } from "./monitoring.js";
 import { registryRouter } from "./registry.js";
-import { invitationsRouter } from "./invitations.js";
 import { usersRouter } from "./users.js";
 
 export const apiRouter = Router();
@@ -33,4 +32,3 @@ apiRouter.use("/incidents", incidentsRouter);
 apiRouter.use("/maintenance", maintenanceRouter);
 apiRouter.use("/governance", governanceRouter);
 apiRouter.use("/users", usersRouter);
-apiRouter.use("/invitations", invitationsRouter);

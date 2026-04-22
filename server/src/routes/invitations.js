@@ -4,8 +4,11 @@ import { Router } from "express";
 import { z } from "zod";
 
 import { db } from "../../db.js";
+import { appConfig } from "../config.js";
 import { createHttpError, sendError } from "../lib/httpError.js";
+import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/role.js";
+import { sendInvitationEmail } from "../services/emailService.js";
 
 export const invitationsRouter = Router();
 
@@ -20,7 +23,7 @@ function expiresAt() {
 }
 
 // Admin: list all invitations
-invitationsRouter.get("/", requireRole("Admin"), (_request, response, next) => {
+invitationsRouter.get("/", requireAuth, requireRole("Admin"), (_request, response, next) => {
   try {
     const rows = db
       .prepare("SELECT id, email, role, invited_by, expires_at, used_at, created_at FROM invitations ORDER BY created_at DESC")
@@ -32,13 +35,16 @@ invitationsRouter.get("/", requireRole("Admin"), (_request, response, next) => {
   }
 });
 
+const invitationSchema = z.object({
+  email: z.string().email(),
+  role: z.enum(["Admin", "Maintainer", "Viewer"]).default("Viewer"),
+  delivery: z.enum(["link", "email"]).default("link"),
+});
+
 // Admin: create invitation
-invitationsRouter.post("/", requireRole("Admin"), (request, response, next) => {
+invitationsRouter.post("/", requireAuth, requireRole("Admin"), async (request, response, next) => {
   try {
-    const { email, role } = z.object({
-      email: z.string().email(),
-      role: z.enum(["Admin", "Maintainer", "Viewer"]).default("Viewer"),
-    }).parse(request.body);
+    const { email, role, delivery } = invitationSchema.parse(request.body);
 
     const existingUser = db.prepare("SELECT id FROM users WHERE email = ?").get(email.toLowerCase());
     if (existingUser) {
@@ -55,7 +61,26 @@ invitationsRouter.post("/", requireRole("Admin"), (request, response, next) => {
     `).run(email.toLowerCase(), role, token, request.user?.username || "admin", expiresAt(), nowIso());
 
     const created = db.prepare("SELECT id, email, role, invited_by, expires_at, created_at FROM invitations WHERE id = ?").get(row.lastInsertRowid);
-    response.status(201).json({ ...created, token });
+    const invitePath = `/accept-invite?token=${token}`;
+    const inviteUrl = new URL(invitePath, appConfig.appBaseUrl).toString();
+
+    if (delivery === "email") {
+      await sendInvitationEmail({
+        to: created.email,
+        role: created.role,
+        invitedBy: created.invited_by,
+        inviteUrl,
+        expiresAt: created.expires_at,
+      });
+      response.status(201).json({
+        ...created,
+        delivery: "email",
+        message: `Invitation sent to ${created.email}.`,
+      });
+      return;
+    }
+
+    response.status(201).json({ ...created, token, delivery: "link" });
   } catch (error) {
     sendError(response, error);
     next();
@@ -63,7 +88,7 @@ invitationsRouter.post("/", requireRole("Admin"), (request, response, next) => {
 });
 
 // Admin: cancel invitation
-invitationsRouter.delete("/:id", requireRole("Admin"), (request, response, next) => {
+invitationsRouter.delete("/:id", requireAuth, requireRole("Admin"), (request, response, next) => {
   try {
     const info = db.prepare("DELETE FROM invitations WHERE id = ? AND used_at IS NULL").run(Number(request.params.id));
     if (info.changes === 0) throw createHttpError(404, "Invitation not found or already used.");

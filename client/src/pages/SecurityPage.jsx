@@ -34,7 +34,7 @@ export function SecurityPage() {
   const [inviteLink, setInviteLink] = useState(null);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
-  const [sending, setSending] = useState(false);
+  const [inviteAction, setInviteAction] = useState("");
 
   async function load() {
     const [u, i] = await Promise.all([fetchUsers(), fetchInvitations()]);
@@ -46,21 +46,26 @@ export function SecurityPage() {
     load().catch((e) => setError(e.message));
   }, []);
 
-  async function handleInvite(e) {
-    e.preventDefault();
+  async function handleInvite(delivery) {
     setError("");
+    setStatus("");
     setInviteLink(null);
-    setSending(true);
+    setInviteAction(delivery);
     try {
-      const result = await createInvitation({ email: inviteEmail, role: inviteRole });
-      const link = `${window.location.origin}/accept-invite?token=${result.token}`;
-      setInviteLink(link);
+      const result = await createInvitation({ email: inviteEmail, role: inviteRole, delivery });
+      if (result.delivery === "link") {
+        const link = `${window.location.origin}/accept-invite?token=${result.token}`;
+        setInviteLink(link);
+        setStatus("Invite link generated.");
+      } else {
+        setStatus(result.message || `Invitation sent to ${inviteEmail}.`);
+      }
       setInviteEmail("");
       await load();
     } catch (err) {
       setError(err.message);
     } finally {
-      setSending(false);
+      setInviteAction("");
     }
   }
 
@@ -112,10 +117,10 @@ export function SecurityPage() {
         <div className="panel" style={{ display: "grid", gap: 16 }}>
           <div>
             <h3 className="section-title">Add Collaborator</h3>
-            <p className="section-copy">Enter their email and role. Share the generated link with them — it expires in 72 hours.</p>
+            <p className="section-copy">Enter their email and role. Generate a shareable invite link or send the invitation directly by email. They’ll validate the invite, then choose a username and password.</p>
           </div>
 
-          <form style={{ display: "grid", gap: 12 }} onSubmit={handleInvite}>
+          <form style={{ display: "grid", gap: 12 }} onSubmit={(e) => e.preventDefault()}>
             <div className="form-group">
               <label className="field-label" htmlFor="invite-email">Email address</label>
               <input
@@ -146,13 +151,24 @@ export function SecurityPage() {
                 {inviteRole === "Viewer" && "Read-only access. Cannot save changes."}
               </p>
             </div>
-            <button
-              className="button button-primary"
-              type="submit"
-              disabled={sending || !inviteEmail}
-            >
-              {sending ? "Generating…" : "Generate Invite Link"}
-            </button>
+            <div className="button-row">
+              <button
+                className="button button-primary"
+                type="button"
+                disabled={Boolean(inviteAction) || !inviteEmail}
+                onClick={() => handleInvite("link")}
+              >
+                {inviteAction === "link" ? "Generating…" : "Generate Invite Link"}
+              </button>
+              <button
+                className="button button-secondary"
+                type="button"
+                disabled={Boolean(inviteAction) || !inviteEmail}
+                onClick={() => handleInvite("email")}
+              >
+                {inviteAction === "email" ? "Sending…" : "Send Invite Email"}
+              </button>
+            </div>
           </form>
 
           {inviteLink && (

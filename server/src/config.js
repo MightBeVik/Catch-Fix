@@ -51,4 +51,37 @@ export const appConfig = {
   get adminPassword() {
     return process.env.ADMIN_PASSWORD || "ChangeMe123!";
   },
+  get demoSeedData() {
+    return String(process.env.DEMO_SEED_DATA ?? "true").toLowerCase() !== "false";
+  },
+  get passwordResetBaseUrl() {
+    return process.env.PASSWORD_RESET_BASE_URL || "http://localhost:5173";
+  },
+  get appBaseUrl() {
+    return process.env.APP_BASE_URL || this.passwordResetBaseUrl;
+  },
+  get smtpHost() {
+    return process.env.SMTP_HOST || "";
+  },
+  get smtpPort() {
+    return Number(process.env.SMTP_PORT || 587);
+  },
+  get smtpSecure() {
+    return String(process.env.SMTP_SECURE || "").toLowerCase() === "true" || Number(process.env.SMTP_PORT || 587) === 465;
+  },
+  get smtpUser() {
+    return process.env.SMTP_USER || "";
+  },
+  get smtpPass() {
+    return process.env.SMTP_PASS || "";
+  },
+  get smtpFromEmail() {
+    return process.env.SMTP_FROM_EMAIL || "";
+  },
+  get smtpFromName() {
+    return process.env.SMTP_FROM_NAME || "OverWatch";
+  },
+  get recoveryEmailEnabled() {
+    return Boolean(this.smtpHost && this.smtpFromEmail);
+  },
 };
