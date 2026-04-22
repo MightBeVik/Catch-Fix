@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { clearStoredAuth, getStoredAuth, setStoredAuth } from "./lib/roles";
 import { applyTheme, DEFAULT_THEME, getStoredTheme, setStoredTheme } from "./lib/theme";
+import { AcceptInvitePage } from "./pages/AcceptInvitePage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { GovernancePage } from "./pages/GovernancePage";
 import { IncidentsPage } from "./pages/IncidentsPage";
@@ -42,10 +43,11 @@ export default function App() {
         path="/login"
         element={
           auth
-            ? <Navigate to="/registry" replace />
+            ? <Navigate to="/dashboard" replace />
             : <LoginPage onLogin={handleLogin} />
         }
       />
+      <Route path="/accept-invite" element={<AcceptInvitePage />} />
 
       <Route
         element={

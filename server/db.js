@@ -93,6 +93,17 @@ export function initializeDatabase() {
       role TEXT NOT NULL CHECK(role IN ('Admin', 'Maintainer', 'Viewer')) DEFAULT 'Viewer',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS invitations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      role TEXT NOT NULL CHECK(role IN ('Admin', 'Maintainer', 'Viewer')) DEFAULT 'Viewer',
+      token TEXT NOT NULL UNIQUE,
+      invited_by TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   ensureColumn("services", "provider_type", "TEXT NOT NULL DEFAULT 'anthropic'");

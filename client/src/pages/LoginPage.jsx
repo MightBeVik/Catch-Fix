@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { loginRequest } from "../api/auth";
 import { ScissorBackground } from "../components/ScissorBackground";
@@ -7,6 +7,8 @@ import { setStoredAuth } from "../lib/roles";
 
 export function LoginPage({ onLogin }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const justInvited = searchParams.get("invited") === "1";
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -37,6 +39,12 @@ export function LoginPage({ onLogin }) {
           <h1 className="login-title">Overwatch</h1>
           <p className="login-subtitle">ARTI-409-A &mdash; AI Systems &amp; Governance</p>
         </div>
+
+        {justInvited && (
+          <div style={{ padding: "10px 14px", background: "var(--status-green-bg)", border: "1px solid var(--status-green)", borderRadius: "var(--radius-md)", fontSize: 13, color: "var(--status-green)" }}>
+            Account created! Sign in to get started.
+          </div>
+        )}
 
         <form className="login-form" onSubmit={handleSubmit} noValidate>
           <div className="form-group">

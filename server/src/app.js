@@ -5,6 +5,7 @@ import express from "express";
 import { ensureDefaultAdmin, healthCheckDatabase, initializeDatabase, seedDemoData } from "../db.js";
 import { requireAuth } from "./middleware/auth.js";
 import { authRouter } from "./routes/auth.js";
+import { invitationsRouter } from "./routes/invitations.js";
 import { apiRouter } from "./routes/index.js";
 
 dotenv.config();
@@ -24,8 +25,10 @@ export function createApp() {
     response.json({ status: "ok", service: "Overwatch Server" });
   });
 
-  // Auth routes are public — no token required
+  // Public routes — no token required
   app.use("/api/auth", authRouter);
+  app.use("/api/invitations/validate", invitationsRouter);
+  app.use("/api/invitations/accept", invitationsRouter);
 
   // All other API routes require a valid JWT
   app.use("/api", requireAuth, apiRouter);
