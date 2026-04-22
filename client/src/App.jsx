@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/AppLayout";
 import { clearStoredAuth, getStoredAuth, setStoredAuth } from "./lib/roles";
 import { applyTheme, DEFAULT_THEME, getStoredTheme, setStoredTheme } from "./lib/theme";
+import { DashboardPage } from "./pages/DashboardPage";
 import { GovernancePage } from "./pages/GovernancePage";
 import { IncidentsPage } from "./pages/IncidentsPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -53,7 +54,8 @@ export default function App() {
             : <Navigate to="/login" replace />
         }
       >
-        <Route index element={<Navigate to="/registry" replace />} />
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/registry" element={<RegistryPage />} />
         <Route path="/registry/:serviceId" element={<ServiceDetailPage />} />
         <Route path="/monitoring" element={<MonitoringPage />} />
@@ -64,7 +66,7 @@ export default function App() {
         <Route path="/security" element={<SecurityPage />} />
       </Route>
 
-      <Route path="*" element={<Navigate to={auth ? "/registry" : "/login"} replace />} />
+      <Route path="*" element={<Navigate to={auth ? "/dashboard" : "/login"} replace />} />
     </Routes>
   );
 }

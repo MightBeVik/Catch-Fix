@@ -20,7 +20,7 @@ export function LoginPage({ onLogin }) {
       const { token, user } = await loginRequest(username.trim(), password);
       setStoredAuth({ token, user });
       onLogin({ token, user });
-      navigate("/registry", { replace: true });
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err.message || "Login failed. Please try again.");
     } finally {

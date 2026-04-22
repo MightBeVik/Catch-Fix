@@ -5,6 +5,7 @@ import { fetchMeta } from "../api/client";
 import { canEdit } from "../lib/roles";
 
 const navItems = [
+  { to: "/dashboard", label: "Dashboard" },
   { to: "/registry", label: "Registry" },
   { to: "/monitoring", label: "Monitoring" },
   { to: "/incidents", label: "Incidents" },
@@ -114,7 +115,7 @@ export function AppLayout({ role, user, onLogout, theme, setTheme }) {
           ) : null}
 
           <div style={{ marginTop: meta ? 24 : 0 }}>
-            <Outlet context={{ role, canEdit: canEdit(role), meta }} />
+            <Outlet context={{ role, user, canEdit: canEdit(role), meta }} />
           </div>
         </main>
       </div>
