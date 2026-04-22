@@ -63,9 +63,9 @@ export function AcceptInvitePage() {
       <ScissorBackground />
       <div className="login-card">
         <div className="login-header">
-          <img src="/logo.png" alt="Overwatch" className="login-logo" />
+          <img src="/logo.png" alt="OverWatch" className="login-logo" />
           <h1 className="login-title">You've been invited</h1>
-          <p className="login-subtitle">Create your Overwatch account</p>
+          <p className="login-subtitle">Create your OverWatch account</p>
         </div>
 
         {loadError ? (

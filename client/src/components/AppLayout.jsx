@@ -27,8 +27,8 @@ export function AppLayout({ role, user, onLogout, onUserUpdate, theme, setTheme 
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <img src="/logo.png" alt="Overwatch" className="sidebar-logo" />
-          <h1 className="brand-title">Overwatch</h1>
+          <img src="/logo.png" alt="OverWatch" className="sidebar-logo" />
+          <h1 className="brand-title">OverWatch</h1>
         </div>
 
         <div className="sidebar-section">
@@ -66,8 +66,8 @@ export function AppLayout({ role, user, onLogout, onUserUpdate, theme, setTheme 
       <div className="content-shell">
         <header className="topbar">
           <div className="topbar-title-group">
-            <p className="topbar-subtitle">ARTI-409-A Mission Control</p>
-            <h2 className="topbar-title">Govern, monitor, and maintain AI services</h2>
+            <p className="topbar-subtitle">Mission Control</p>
+            <h2 className="topbar-title"></h2>
           </div>
 
           <div className="topbar-actions">
