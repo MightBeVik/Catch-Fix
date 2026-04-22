@@ -2,12 +2,18 @@ import { appConfig } from "../config.js";
 import { createIncident } from "../repositories/incidentsRepository.js";
 import { createAuditLogEntry } from "../repositories/auditLogRepository.js";
 import { createEvaluation, createMetric, listRecentEvaluations } from "../repositories/monitoringRepository.js";
-import { callAnthropic, decorateServiceConnectionStatus } from "./anthropicService.js";
+import { callAnthropic, callLLMProvider, decorateServiceConnectionStatus } from "./anthropicService.js";
 import { nowIso } from "../lib/time.js";
 
 const piiPatterns = {
   email: /[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+/,
   phone: /\b(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/,
+};
+
+export const goldenDatasets = {
+  "Claims Triage Bot": ["status", "summary", "actions", "claim_id_parsed"],
+  "Policy Review Copilot": ["status", "summary", "actions", "policy_citations"],
+  "Claude Ops Assistant": ["status", "summary", "actions", "remediation_steps"]
 };
 
 export function evaluateFormatting(text) {
@@ -51,6 +57,59 @@ export function evaluatePolicy(text) {
   };
 }
 
+export async function evaluateWithJudgeLLM(text, service) {
+  const expectedFacts = goldenDatasets[service.name] || ["status", "summary", "actions"];
+
+  const prompt = [
+    `Evaluate the following AI output for the service: ${service.name}.`,
+    `The output was supposed to be a system status report containing these specific ground-truth facts: ${expectedFacts.join(", ")}.`,
+    "Identify which of these expected facts are matched and which are missing.",
+    "Give it a score from 0 to 100 based on its helpfulness, relevance, and completeness.",
+    "Return ONLY a JSON object with keys 'score' (number), 'reasoning' (string), 'matched_facts' (array of strings), and 'missing_facts' (array of strings).",
+    `Output: ${text}`
+  ].join("\\n");
+
+  const effectiveService = {
+    provider_type: "anthropic",
+    model_name: appConfig.anthropicModel,
+    api_endpoint: appConfig.anthropicEndpoint,
+    api_key_env_var: "ANTHROPIC_API_KEY",
+  };
+
+  try {
+    const result = await callLLMProvider({
+      service: effectiveService,
+      prompt,
+      system: "You are an AI judge. Evaluate the output strictly and return valid JSON.",
+      maxTokens: 250,
+    });
+
+    const parsed = JSON.parse(result.text);
+    const score = typeof parsed.score === "number" ? parsed.score : 50;
+    return {
+      category: "judge_quality",
+      score: Math.min(Math.max(score, 0), 100),
+      passed: score >= 70,
+      result_details: {
+        reasoning: parsed.reasoning || "No reasoning provided.",
+        matched_facts: Array.isArray(parsed.matched_facts) ? parsed.matched_facts : [],
+        missing_facts: Array.isArray(parsed.missing_facts) ? parsed.missing_facts : [],
+      },
+    };
+  } catch (error) {
+    return {
+      category: "judge_quality",
+      score: 0,
+      passed: false,
+      result_details: {
+        reasoning: `Judge LLM failed to evaluate: ${error.message}`,
+        matched_facts: [],
+        missing_facts: expectedFacts,
+      },
+    };
+  }
+}
+
 export async function runEvaluationForService(service, triggeredBy = "manual") {
   const prompt = [
     "Return only JSON.",
@@ -67,9 +126,10 @@ export async function runEvaluationForService(service, triggeredBy = "manual") {
 
   const formatting = evaluateFormatting(llmResult.text);
   const policy = evaluatePolicy(llmResult.text);
+  const judge = await evaluateWithJudgeLLM(llmResult.text, service);
   const timestamp = nowIso();
 
-  const evaluations = [formatting, policy].map((evaluation) =>
+  const evaluations = [formatting, policy, judge].map((evaluation) =>
     createEvaluation({
       service_id: service.id,
       score: evaluation.score,
@@ -83,8 +143,8 @@ export async function runEvaluationForService(service, triggeredBy = "manual") {
     })
   );
 
-  const qualityScore = Math.round((formatting.score + policy.score) / 2);
-  const errorRate = Number((((2 - evaluations.filter((item) => item.score === 100).length) / 2) * 100).toFixed(2));
+  const qualityScore = Math.round((formatting.score + policy.score + judge.score) / 3);
+  const errorRate = Number((((3 - evaluations.filter((item) => item.score === 100).length) / 3) * 100).toFixed(2));
 
   const metric = createMetric({
     service_id: service.id,

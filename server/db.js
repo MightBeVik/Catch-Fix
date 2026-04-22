@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import Database from "better-sqlite3";
+import { DatabaseSync as Database } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -10,8 +10,8 @@ fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
 
 export const db = new Database(resolvedPath);
 
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+db.exec("PRAGMA journal_mode = WAL;");
+db.exec("PRAGMA foreign_keys = ON;");
 
 export function initializeDatabase() {
   db.exec(`
@@ -297,6 +297,20 @@ function ensureMonitoringHistory(services) {
           output_preview: snapshot.preview,
           triggered_by: snapshot.triggeredBy,
         }),
+      );
+
+      db.prepare(`
+        INSERT INTO evaluations (service_id, score, category, result_details, timestamp)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(
+        service.id,
+        snapshot.judgeScore || 100,
+        "judge_quality",
+        JSON.stringify({
+          reasoning: snapshot.judgeReasoning || "Judged via initial seed data.",
+          matched_facts: snapshot.judgeMatchedFacts || ["status", "summary", "actions"],
+          missing_facts: snapshot.judgeMissingFacts || [],
+        }),
         snapshot.timestamp,
       );
 
@@ -456,6 +470,10 @@ function monitoringSeedByName(serviceName) {
       timestamp: hoursAgoIso(28),
       formattingScore: 100,
       policyScore: 100,
+      judgeScore: 100,
+      judgeReasoning: "Response contains expected facts.",
+      judgeMatchedFacts: ["status", "summary", "actions"],
+      judgeMissingFacts: [],
       qualityScore: 100,
       latencyMs: 812,
       errorRate: 0,
@@ -466,6 +484,10 @@ function monitoringSeedByName(serviceName) {
       timestamp: hoursAgoIso(2),
       formattingScore: 100,
       policyScore: 100,
+      judgeScore: 100,
+      judgeReasoning: "Healthy response.",
+      judgeMatchedFacts: ["status", "summary", "actions"],
+      judgeMissingFacts: [],
       qualityScore: 100,
       latencyMs: 640,
       errorRate: 0,
@@ -480,6 +502,10 @@ function monitoringSeedByName(serviceName) {
         timestamp: hoursAgoIso(26),
         formattingScore: 100,
         policyScore: 100,
+        judgeScore: 100,
+        judgeReasoning: "Queue stable.",
+        judgeMatchedFacts: ["status", "summary", "actions", "claim_id_parsed"],
+        judgeMissingFacts: [],
         qualityScore: 100,
         latencyMs: 910,
         errorRate: 0,
@@ -490,6 +516,10 @@ function monitoringSeedByName(serviceName) {
         timestamp: hoursAgoIso(9),
         formattingScore: 0,
         policyScore: 100,
+        judgeScore: 50,
+        judgeReasoning: "Missing the 'actions' property.",
+        judgeMatchedFacts: ["status", "summary"],
+        judgeMissingFacts: ["actions", "claim_id_parsed"],
         qualityScore: 50,
         latencyMs: 1280,
         errorRate: 50,
@@ -505,6 +535,10 @@ function monitoringSeedByName(serviceName) {
         timestamp: hoursAgoIso(20),
         formattingScore: 100,
         policyScore: 100,
+        judgeScore: 100,
+        judgeReasoning: "All fields present.",
+        judgeMatchedFacts: ["status", "summary", "actions", "policy_citations"],
+        judgeMissingFacts: [],
         qualityScore: 100,
         latencyMs: 700,
         errorRate: 0,
@@ -515,6 +549,10 @@ function monitoringSeedByName(serviceName) {
         timestamp: hoursAgoIso(5),
         formattingScore: 100,
         policyScore: 0,
+        judgeScore: 50,
+        judgeReasoning: "Missing summary component.",
+        judgeMatchedFacts: ["status", "actions"],
+        judgeMissingFacts: ["summary", "policy_citations"],
         qualityScore: 50,
         latencyMs: 980,
         errorRate: 50,
