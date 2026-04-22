@@ -29,9 +29,6 @@ export function AppLayout({ role, user, onLogout, onUserUpdate, theme, setTheme 
         <div className="sidebar-brand">
           <img src="/logo.png" alt="Overwatch" className="sidebar-logo" />
           <h1 className="brand-title">Overwatch</h1>
-          <p className="brand-copy">
-            React client with governance-aware workflows and backend-only multi-provider LLM routing.
-          </p>
         </div>
 
         <div className="sidebar-section">
