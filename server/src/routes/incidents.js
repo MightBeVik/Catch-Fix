@@ -41,6 +41,7 @@ incidentsRouter.post("/", requireRole("Admin", "Maintainer"), (request, response
     const payload = incidentSchema.parse(request.body);
     const incident = createIncident(payload);
     createAuditLogEntry({
+      username: request.user?.username || "",
       userRole: request.userRole,
       action: "incident_created",
       entityType: "incident",
@@ -63,6 +64,7 @@ incidentsRouter.put("/:id", requireRole("Admin", "Maintainer"), (request, respon
     }
     const updated = updateIncident(id, payload);
     createAuditLogEntry({
+      username: request.user?.username || "",
       userRole: request.userRole,
       action: "incident_updated",
       entityType: "incident",
@@ -109,6 +111,7 @@ incidentsRouter.post("/:id/approve-summary", requireRole("Admin", "Maintainer"),
       throw createHttpError(404, "Incident not found.");
     }
     createAuditLogEntry({
+      username: request.user?.username || "",
       userRole: request.userRole,
       action: "incident_summary_approved",
       entityType: "incident",

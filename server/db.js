@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
@@ -74,6 +75,7 @@ export function initializeDatabase() {
 
     CREATE TABLE IF NOT EXISTS audit_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL DEFAULT '',
       user_role TEXT NOT NULL,
       action TEXT NOT NULL,
       entity_type TEXT NOT NULL,
@@ -82,10 +84,33 @@ export function initializeDatabase() {
       new_value TEXT,
       timestamp TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL CHECK(role IN ('Admin', 'Maintainer', 'Viewer')) DEFAULT 'Viewer',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   ensureColumn("services", "provider_type", "TEXT NOT NULL DEFAULT 'anthropic'");
   ensureColumn("services", "api_key_env_var", "TEXT");
+  ensureColumn("audit_log", "username", "TEXT NOT NULL DEFAULT ''");
+}
+
+export function ensureDefaultAdmin() {
+  const existing = db.prepare("SELECT id FROM users LIMIT 1").get();
+  if (existing) return;
+
+  const password = process.env.ADMIN_PASSWORD || "ChangeMe123!";
+  const hash = bcrypt.hashSync(password, 10);
+  db.prepare(
+    "INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, 'Admin')",
+  ).run("admin", "admin@catchfix.local", hash);
+
+  console.log(`\n[Catch-Fix] Default admin created — username: admin  password: ${password}\n`);
 }
 
 export function clearOperationalData() {

@@ -1,14 +1,15 @@
 import { db } from "../../db.js";
 import { nowIso } from "../lib/time.js";
 
-export function createAuditLogEntry({ userRole, action, entityType, entityId, oldValue = null, newValue = null }) {
+export function createAuditLogEntry({ username = "", userRole, action, entityType, entityId, oldValue = null, newValue = null }) {
   const statement = db.prepare(`
-    INSERT INTO audit_log (user_role, action, entity_type, entity_id, old_value, new_value, timestamp)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO audit_log (username, user_role, action, entity_type, entity_id, old_value, new_value, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const timestamp = nowIso();
   const result = statement.run(
+    username,
     userRole,
     action,
     entityType,
@@ -39,6 +40,7 @@ function deserializeAuditRow(row) {
 
   return {
     id: row.id,
+    username: row.username || "",
     user_role: row.user_role,
     action: row.action,
     entity_type: row.entity_type,

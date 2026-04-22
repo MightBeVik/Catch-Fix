@@ -76,6 +76,7 @@ registryRouter.post("/services", requireRole("Admin", "Maintainer"), (request, r
     const payload = serviceSchema.parse(request.body);
     const service = createService(payload);
     createAuditLogEntry({
+      username: request.user?.username || "",
       userRole: request.userRole,
       action: "service_created",
       entityType: "service",
@@ -98,6 +99,7 @@ registryRouter.put("/services/:id", requireRole("Admin", "Maintainer"), (request
     }
     const updated = updateService(id, payload);
     createAuditLogEntry({
+      username: request.user?.username || "",
       userRole: request.userRole,
       action: "service_updated",
       entityType: "service",
@@ -118,6 +120,7 @@ registryRouter.delete("/services/:id", requireRole("Admin", "Maintainer"), (requ
       throw createHttpError(404, "Service not found.");
     }
     createAuditLogEntry({
+      username: request.user?.username || "",
       userRole: request.userRole,
       action: "service_deleted",
       entityType: "service",
@@ -138,6 +141,7 @@ registryRouter.post("/services/:id/test-connection", requireRole("Admin", "Maint
     }
     const result = await testServiceConnection(service, request.body?.prompt || "Reply with the single word PONG.");
     createAuditLogEntry({
+      username: request.user?.username || "",
       userRole: request.userRole,
       action: "service_connection_tested",
       entityType: "service",

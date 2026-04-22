@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 
 import { fetchMeta } from "../api/client";
-import { DEMO_ROLES, canEdit } from "../lib/roles";
+import { canEdit } from "../lib/roles";
 
 const navItems = [
   { to: "/registry", label: "Registry" },
@@ -10,9 +10,11 @@ const navItems = [
   { to: "/incidents", label: "Incidents" },
   { to: "/maintenance", label: "Maintenance" },
   { to: "/governance", label: "Governance" },
+  { to: "/security", label: "Security" },
+  { to: "/settings", label: "Settings" },
 ];
 
-export function AppLayout({ role, setRole, theme, setTheme }) {
+export function AppLayout({ role, user, onLogout, theme, setTheme }) {
   const [meta, setMeta] = useState(null);
   const supportedProviders = meta?.runtime?.supported_providers || [];
 
@@ -24,15 +26,19 @@ export function AppLayout({ role, setRole, theme, setTheme }) {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <p className="brand-mark">Catch-Fix</p>
-          <h1 className="brand-title">AI Operations Control Room</h1>
+          <img src="/logo.png" alt="Overwatch" className="sidebar-logo" />
+          <h1 className="brand-title">Overwatch</h1>
           <p className="brand-copy">
-              React client with simulated auth, governance-aware workflows, and backend-only multi-provider LLM routing.
+            React client with governance-aware workflows and backend-only multi-provider LLM routing.
           </p>
         </div>
 
         <div className="sidebar-section">
-          <div className="field-label">Role Context</div>
+          <div className="field-label">Signed in as</div>
+          <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+            <span className="brand-copy" style={{ margin: 0 }}>{user?.name ?? role}</span>
+            <span className={`role-badge role-badge--${role?.toLowerCase()}`}>{role}</span>
+          </div>
           <div className="brand-copy" style={{ marginTop: 8 }}>
             {canEdit(role)
               ? "This role can create and update operational records."
@@ -51,6 +57,12 @@ export function AppLayout({ role, setRole, theme, setTheme }) {
             </NavLink>
           ))}
         </nav>
+
+        <div style={{ paddingTop: 20, borderTop: "1px solid var(--border)", marginTop: 24 }}>
+          <button className="button button-secondary" style={{ width: "100%" }} onClick={onLogout} type="button">
+            Sign Out
+          </button>
+        </div>
       </aside>
 
       <div className="content-shell">
@@ -85,21 +97,6 @@ export function AppLayout({ role, setRole, theme, setTheme }) {
               <span className={["status-dot", supportedProviders.length ? "status-dot--live" : "status-dot--critical"].join(" ")} />
               <span>{supportedProviders.length ? "Local + cloud adapters" : "No adapters loaded"}</span>
             </div>
-
-            <label className="role-switcher">
-              <span className="field-label">Role</span>
-              <select
-                className="select"
-                value={role}
-                onChange={(event) => setRole(event.target.value)}
-              >
-                {DEMO_ROLES.map((demoRole) => (
-                  <option key={demoRole} value={demoRole}>
-                    {demoRole}
-                  </option>
-                ))}
-              </select>
-            </label>
           </div>
         </header>
 

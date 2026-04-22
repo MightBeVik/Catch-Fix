@@ -38,3 +38,6 @@ server/.env
 client/dist/
 server/coverage/
 
+# Claude Code internals
+.claude/
+

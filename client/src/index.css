@@ -832,6 +832,152 @@ textarea {
   }
 }
 
+/* ── Login page ─────────────────────────────────────────── */
+
+.login-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: transparent;
+  padding: 24px;
+}
+
+.login-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 36px 32px;
+  box-shadow: var(--shadow-elevated);
+  display: grid;
+  gap: 28px;
+}
+
+.login-header {
+  text-align: center;
+}
+
+.login-logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  margin-bottom: 8px;
+}
+
+.sidebar-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  margin-bottom: 6px;
+}
+
+.login-title {
+  margin: 8px 0 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.login-subtitle {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.login-form {
+  display: grid;
+  gap: 16px;
+}
+
+.form-group {
+  display: grid;
+  gap: 6px;
+}
+
+.login-demo {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+
+.login-demo-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.login-demo-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.login-demo-card:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-focus);
+}
+
+.login-demo-name {
+  flex: 1;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.login-demo-creds {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Role badges ─────────────────────────────────────────── */
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+.role-badge--admin {
+  color: var(--status-green);
+  background: var(--status-green-bg);
+  border-color: var(--status-green);
+}
+
+.role-badge--maintainer {
+  color: var(--status-yellow);
+  background: var(--status-yellow-bg);
+  border-color: var(--status-yellow);
+}
+
+.role-badge--viewer {
+  color: var(--text-muted);
+  background: var(--status-gray-bg);
+  border-color: var(--status-gray);
+}
+
+/* ─────────────────────────────────────────────────────────── */
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;

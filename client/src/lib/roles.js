@@ -1,14 +1,25 @@
-export const DEMO_ROLES = ["Admin", "Maintainer", "Viewer"];
-export const DEFAULT_ROLE = "Admin";
-const STORAGE_KEY = "catch-fix-demo-role";
+export const ROLES = ["Admin", "Maintainer", "Viewer"];
 
-export function getStoredRole() {
-  const value = window.localStorage.getItem(STORAGE_KEY);
-  return DEMO_ROLES.includes(value) ? value : DEFAULT_ROLE;
+const AUTH_KEY = "catch-fix-auth";
+
+export function getStoredAuth() {
+  try {
+    return JSON.parse(window.localStorage.getItem(AUTH_KEY)) || null;
+  } catch {
+    return null;
+  }
 }
 
-export function setStoredRole(role) {
-  window.localStorage.setItem(STORAGE_KEY, DEMO_ROLES.includes(role) ? role : DEFAULT_ROLE);
+export function setStoredAuth(data) {
+  window.localStorage.setItem(AUTH_KEY, JSON.stringify(data));
+}
+
+export function clearStoredAuth() {
+  window.localStorage.removeItem(AUTH_KEY);
+}
+
+export function getStoredToken() {
+  return getStoredAuth()?.token || null;
 }
 
 export function canEdit(role) {

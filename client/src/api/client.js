@@ -1,16 +1,27 @@
-import { getStoredRole } from "../lib/roles";
+import { clearStoredAuth, getStoredToken } from "../lib/roles";
 
 async function readResponse(response) {
   const payload = await response.json().catch(() => null);
+
+  if (response.status === 401) {
+    clearStoredAuth();
+    window.location.href = "/login";
+    throw new Error("Session expired. Please log in again.");
+  }
+
   if (!response.ok) {
     throw new Error(payload?.error || payload?.message || "Request failed");
   }
+
   return payload;
 }
 
 export async function apiRequest(path, options = {}) {
   const headers = new Headers(options.headers || {});
-  headers.set("x-demo-role", getStoredRole());
+  const token = getStoredToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
   if (options.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
@@ -28,8 +39,16 @@ export function fetchMeta() {
 }
 
 export async function downloadJson(path, filenamePrefix) {
-  const headers = new Headers({ "x-demo-role": getStoredRole() });
+  const token = getStoredToken();
+  const headers = new Headers();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
   const response = await fetch(`/api${path}`, { headers });
+  if (response.status === 401) {
+    clearStoredAuth();
+    window.location.href = "/login";
+    throw new Error("Session expired.");
+  }
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
     throw new Error(payload?.error || "Download failed");

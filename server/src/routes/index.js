@@ -6,13 +6,14 @@ import { incidentsRouter } from "./incidents.js";
 import { maintenanceRouter } from "./maintenance.js";
 import { monitoringRouter } from "./monitoring.js";
 import { registryRouter } from "./registry.js";
+import { usersRouter } from "./users.js";
 
 export const apiRouter = Router();
 
 apiRouter.get("/meta", (_request, response) => {
   const runtime = getRuntimeProviderStatus();
   response.json({
-    project: "Catch-Fix",
+    project: "Overwatch",
     stack: {
       client: "React + Tailwind + Vite",
       server: "Node.js + Express",
@@ -30,3 +31,4 @@ apiRouter.use("/monitoring", monitoringRouter);
 apiRouter.use("/incidents", incidentsRouter);
 apiRouter.use("/maintenance", maintenanceRouter);
 apiRouter.use("/governance", governanceRouter);
+apiRouter.use("/users", usersRouter);

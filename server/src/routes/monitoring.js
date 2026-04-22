@@ -49,6 +49,7 @@ monitoringRouter.post("/evaluations/run", requireRole("Admin", "Maintainer"), as
 
     const result = await runEvaluationForService(service, "manual");
     createAuditLogEntry({
+      username: request.user?.username || "",
       userRole: request.userRole,
       action: "evaluation_run",
       entityType: "evaluation",

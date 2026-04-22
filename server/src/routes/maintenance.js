@@ -39,6 +39,7 @@ maintenanceRouter.post("/plans", requireRole("Admin", "Maintainer"), (request, r
     }
     const plan = createMaintenancePlan(payload);
     createAuditLogEntry({
+      username: request.user?.username || "",
       userRole: request.userRole,
       action: "maintenance_plan_created",
       entityType: "maintenance_plan",
@@ -63,6 +64,7 @@ maintenanceRouter.put("/plans/:id", requireRole("Admin", "Maintainer"), (request
     }
     const updated = updateMaintenancePlan(Number(request.params.id), payload);
     createAuditLogEntry({
+      username: request.user?.username || "",
       userRole: request.userRole,
       action: "maintenance_plan_updated",
       entityType: "maintenance_plan",

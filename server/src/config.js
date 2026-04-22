@@ -45,4 +45,10 @@ export const appConfig = {
   get driftThreshold() {
     return Number(process.env.DRIFT_THRESHOLD || 70);
   },
+  get jwtSecret() {
+    return process.env.JWT_SECRET || "change-me-in-production";
+  },
+  get adminPassword() {
+    return process.env.ADMIN_PASSWORD || "ChangeMe123!";
+  },
 };
