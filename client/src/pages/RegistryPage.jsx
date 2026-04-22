@@ -25,14 +25,24 @@ const providerPresets = {
   },
 };
 
+// All display labels (value stored in DB is always openai-compatible / ollama / anthropic)
 const providerLabels = {
   anthropic: "Anthropic",
-  "openai-compatible": "OpenAI-compatible",
+  "openai-compatible": "OpenAI-Compatible / LM Studio",
   ollama: "Ollama",
 };
 
+// Providers visible per service type
+const LOCAL_PROVIDER_OPTIONS = ["ollama", "openai-compatible"];
+const CLOUD_PROVIDER_OPTIONS = ["anthropic"];
+
+function deriveServiceType(provider_type) {
+  return LOCAL_PROVIDER_OPTIONS.includes(provider_type) ? "Local" : "Cloud";
+}
+
 function createBlankForm(providerType = "openai-compatible") {
   return {
+    serviceType: "Local",
     name: "",
     owner: "",
     environment: "dev",
@@ -41,6 +51,14 @@ function createBlankForm(providerType = "openai-compatible") {
   };
 }
 
+// Required fields and their human-readable labels
+const REQUIRED_FIELDS = [
+  { key: "name", label: "Service Name" },
+  { key: "owner", label: "Owner" },
+  { key: "model_name", label: "Model Name" },
+  { key: "api_endpoint", label: "API Endpoint" },
+];
+
 export function RegistryPage() {
   const { canEdit } = useOutletContext();
   const [services, setServices] = useState([]);
@@ -48,7 +66,13 @@ export function RegistryPage() {
   const [form, setForm] = useState(createBlankForm());
   const [editingId, setEditingId] = useState(null);
   const [status, setStatus] = useState("");
+  // Map of serviceId → test result, so each card shows its own result
+  const [testResults, setTestResults] = useState({});
+  const [testingId, setTestingId] = useState(null); // which service is currently being tested
+  const [validationErrors, setValidationErrors] = useState([]);
   const [search, setSearch] = useState("");
+
+  const isLocal = form.serviceType === "Local";
 
   async function loadServices() {
     const [serviceData, dashboardData] = await Promise.all([fetchServices(), fetchDashboard()]);
@@ -83,21 +107,65 @@ export function RegistryPage() {
   }
 
   function applyProviderPreset(providerType) {
+    setValidationErrors([]);
     setForm((current) => ({
       ...current,
       ...providerPresets[providerType],
       provider_type: providerType,
+      serviceType: deriveServiceType(providerType),
     }));
+  }
+
+  function handleServiceTypeChange(newType) {
+    setValidationErrors([]);
+    // Default provider when switching types
+    const defaultProvider = newType === "Cloud" ? "anthropic" : "ollama";
+    setForm((current) => ({
+      ...current,
+      serviceType: newType,
+      ...providerPresets[defaultProvider],
+      provider_type: defaultProvider,
+    }));
+  }
+
+  // Providers available for the current service type
+  const availableProviders = isLocal ? LOCAL_PROVIDER_OPTIONS : CLOUD_PROVIDER_OPTIONS;
+
+  function validate() {
+    const errors = [];
+    for (const { key, label } of REQUIRED_FIELDS) {
+      if (!form[key] || String(form[key]).trim() === "") {
+        errors.push(label);
+      }
+    }
+    // api_key_env_var is required only for Cloud services
+    if (!isLocal && (!form.api_key_env_var || String(form.api_key_env_var).trim() === "")) {
+      errors.push("Server API Key Env Var (required for Cloud services)");
+    }
+    return errors;
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setValidationErrors([]);
+
+    const errors = validate();
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
     try {
+      const payload = { ...form };
+      // For local services, clear the api_key_env_var
+      if (isLocal) payload.api_key_env_var = "";
+      delete payload.serviceType;
+
       if (editingId) {
-        await updateService(editingId, form);
+        await updateService(editingId, payload);
         setStatus("Service updated.");
       } else {
-        await createService(form);
+        await createService(payload);
         setStatus("Service created.");
       }
       setForm(createBlankForm());
@@ -119,11 +187,33 @@ export function RegistryPage() {
   }
 
   async function handleTest(id) {
+    setTestingId(id);
+    // Clear previous result for this card only
+    setTestResults((prev) => ({ ...prev, [id]: null }));
     try {
-      const result = await testServiceConnection(id, "Reply with a tiny JSON object containing a status key.");
-      setStatus(`Connection result: ${result.test_result.status} in ${result.test_result.latency_ms} ms`);
+      const data = await testServiceConnection(id, "Reply with a tiny JSON object containing a status field set to 'ok'.");
+      const tr = data.test_result;
+      setTestResults((prev) => ({
+        ...prev,
+        [id]: {
+          success: tr.success,
+          detail: tr.detail || (tr.success ? "Connection successful." : "Connection failed."),
+          latency_ms: tr.latency_ms,
+          response_preview: tr.response_preview || "",
+        },
+      }));
     } catch (error) {
-      setStatus(error.message);
+      setTestResults((prev) => ({
+        ...prev,
+        [id]: {
+          success: false,
+          detail: error.message || "Connection test failed.",
+          latency_ms: null,
+          response_preview: "",
+        },
+      }));
+    } finally {
+      setTestingId(null);
     }
   }
 
@@ -146,54 +236,192 @@ export function RegistryPage() {
       </div>
 
       <div className="split-layout" style={{ gridTemplateColumns: "minmax(340px, 380px) minmax(0, 1fr)" }}>
-        <form className="panel" onSubmit={handleSubmit}>
+        <form className="panel" onSubmit={handleSubmit} noValidate>
           <h4 className="section-title">{editingId ? "Edit service" : "Create service"}</h4>
           <div className="field-stack" style={{ marginTop: 16 }}>
+
+            {/* ── Type (first field) ── */}
             <label className="field">
-              <span className="field-label">name</span>
-              <input className="input" disabled={!canEdit} value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
+              <span className="field-label">
+                type <span style={{ color: "var(--status-red)", marginLeft: 2 }}>*</span>
+              </span>
+              <div style={{ display: "flex", gap: 0, border: "1px solid var(--border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+                {["Local", "Cloud"].map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    disabled={!canEdit}
+                    onClick={() => handleServiceTypeChange(opt)}
+                    style={{
+                      flex: 1,
+                      padding: "8px 0",
+                      border: "none",
+                      borderRight: opt === "Local" ? "1px solid var(--border)" : "none",
+                      background: form.serviceType === opt ? "var(--accent-blue)" : "var(--bg-elevated)",
+                      color: form.serviceType === opt ? "#fff" : "var(--text-secondary)",
+                      fontWeight: form.serviceType === opt ? 600 : 400,
+                      cursor: canEdit ? "pointer" : "not-allowed",
+                      fontSize: 13,
+                      transition: "background 150ms ease, color 150ms ease",
+                    }}
+                  >
+                    {opt === "Local" ? "🖥  Local" : "☁  Cloud"}
+                  </button>
+                ))}
+              </div>
+              <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-secondary)" }}>
+                {isLocal
+                  ? "Runs on your local machine (Ollama, LM Studio). No API key required."
+                  : "Cloud-hosted provider (Anthropic, OpenAI, etc.). API key env var required."}
+              </p>
             </label>
+
+            {/* ── Name ── */}
             <label className="field">
-              <span className="field-label">owner</span>
-              <input className="input" disabled={!canEdit} value={form.owner} onChange={(event) => setForm((current) => ({ ...current, owner: event.target.value }))} />
+              <span className="field-label">
+                name <span style={{ color: "var(--status-red)", marginLeft: 2 }}>*</span>
+              </span>
+              <input
+                className="input"
+                disabled={!canEdit}
+                placeholder="e.g. Claims Triage Bot"
+                value={form.name}
+                onChange={(event) => { setValidationErrors([]); setForm((c) => ({ ...c, name: event.target.value })); }}
+              />
             </label>
+
+            {/* ── Owner ── */}
+            <label className="field">
+              <span className="field-label">
+                owner <span style={{ color: "var(--status-red)", marginLeft: 2 }}>*</span>
+              </span>
+              <input
+                className="input"
+                disabled={!canEdit}
+                placeholder="e.g. Platform Reliability"
+                value={form.owner}
+                onChange={(event) => { setValidationErrors([]); setForm((c) => ({ ...c, owner: event.target.value })); }}
+              />
+            </label>
+
+            {/* ── Environment ── */}
             <label className="field">
               <span className="field-label">environment</span>
-              <select className="select" disabled={!canEdit} value={form.environment} onChange={(event) => setForm((current) => ({ ...current, environment: event.target.value }))}>
+              <select
+                className="select"
+                disabled={!canEdit}
+                value={form.environment}
+                onChange={(event) => setForm((c) => ({ ...c, environment: event.target.value }))}
+              >
                 {["dev", "prod"].map((item) => <option key={item}>{item}</option>)}
               </select>
             </label>
+
+            {/* ── Provider Type — filtered by Local / Cloud ── */}
             <label className="field">
               <span className="field-label">provider type</span>
-              <select className="select" disabled={!canEdit} value={form.provider_type} onChange={(event) => applyProviderPreset(event.target.value)}>
-                {Object.entries(providerLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              <select
+                className="select"
+                disabled={!canEdit}
+                value={form.provider_type}
+                onChange={(event) => applyProviderPreset(event.target.value)}
+              >
+                {availableProviders.map((value) => (
+                  <option key={value} value={value}>{providerLabels[value]}</option>
+                ))}
               </select>
             </label>
+
+            {/* ── Model Name ── */}
             <label className="field">
-              <span className="field-label">model name</span>
-              <input className="input" disabled={!canEdit} value={form.model_name} onChange={(event) => setForm((current) => ({ ...current, model_name: event.target.value }))} />
+              <span className="field-label">
+                model name <span style={{ color: "var(--status-red)", marginLeft: 2 }}>*</span>
+              </span>
+              <input
+                className="input"
+                disabled={!canEdit}
+                value={form.model_name}
+                onChange={(event) => { setValidationErrors([]); setForm((c) => ({ ...c, model_name: event.target.value })); }}
+              />
             </label>
+
+            {/* ── Sensitivity ── */}
             <label className="field">
               <span className="field-label">sensitivity</span>
-              <select className="select" disabled={!canEdit} value={form.sensitivity} onChange={(event) => setForm((current) => ({ ...current, sensitivity: event.target.value }))}>
+              <select
+                className="select"
+                disabled={!canEdit}
+                value={form.sensitivity}
+                onChange={(event) => setForm((c) => ({ ...c, sensitivity: event.target.value }))}
+              >
                 {["public", "internal", "confidential"].map((item) => <option key={item}>{item}</option>)}
               </select>
             </label>
+
+            {/* ── API Endpoint ── */}
             <label className="field">
-              <span className="field-label">api endpoint</span>
-              <input className="input" disabled={!canEdit} value={form.api_endpoint} onChange={(event) => setForm((current) => ({ ...current, api_endpoint: event.target.value }))} />
+              <span className="field-label">
+                api endpoint <span style={{ color: "var(--status-red)", marginLeft: 2 }}>*</span>
+              </span>
+              <input
+                className="input"
+                disabled={!canEdit}
+                value={form.api_endpoint}
+                onChange={(event) => { setValidationErrors([]); setForm((c) => ({ ...c, api_endpoint: event.target.value })); }}
+              />
             </label>
-            <label className="field">
-              <span className="field-label">server api key env var</span>
-              <input className="input" disabled={!canEdit} placeholder="Optional for LM Studio / local endpoints" value={form.api_key_env_var} onChange={(event) => setForm((current) => ({ ...current, api_key_env_var: event.target.value }))} />
-            </label>
+
+            {/* ── Server API Key Env Var — hidden for Local ── */}
+            {!isLocal && (
+              <label className="field" style={{ animation: "fadeIn 200ms ease" }}>
+                <span className="field-label">
+                  server api key env var{" "}
+                  <span style={{ color: "var(--status-red)", marginLeft: 2 }}>*</span>
+                </span>
+                <input
+                  className="input"
+                  disabled={!canEdit}
+                  placeholder="e.g. ANTHROPIC_API_KEY"
+                  value={form.api_key_env_var}
+                  onChange={(event) => { setValidationErrors([]); setForm((c) => ({ ...c, api_key_env_var: event.target.value })); }}
+                />
+              </label>
+            )}
+
+            {/* ── Validation error block ── */}
+            {validationErrors.length > 0 && (
+              <div
+                style={{
+                  padding: "12px 14px",
+                  background: "var(--callout-danger-bg)",
+                  border: "1px solid var(--status-red)",
+                  borderLeft: "3px solid var(--status-red)",
+                  borderRadius: "var(--radius-md)",
+                  display: "grid",
+                  gap: 6,
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "var(--status-red)" }}>
+                  Please fill in the following required fields:
+                </p>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "var(--text-secondary)" }}>
+                  {validationErrors.map((err) => (
+                    <li key={err}>{err}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             <div className="panel-elevated" style={{ padding: "14px 16px" }}>
               <div className="field-label">Provider preset</div>
               <div className="section-copy" style={{ marginTop: 8 }}>
-                Anthropic uses a server env var. OpenAI-compatible works for OpenAI, LM Studio, or any matching wrapper. Ollama targets a local REST endpoint and does not need a key.
+                {isLocal
+                  ? "Local providers (Ollama, LM Studio) run on your machine and do not require server-side API keys."
+                  : "Cloud providers use a server env var for authentication. The key name is saved on the server — never the key value."}
               </div>
             </div>
           </div>
+
           <div className="button-row" style={{ marginTop: 16 }}>
             <button className="button button-primary" disabled={!canEdit} type="submit">
               {editingId ? "Save changes" : "Create service"}
@@ -204,6 +432,7 @@ export function RegistryPage() {
                 type="button"
                 onClick={() => {
                   setEditingId(null);
+                  setValidationErrors([]);
                   setForm(createBlankForm());
                 }}
               >
@@ -222,6 +451,7 @@ export function RegistryPage() {
             {filtered.map((service) => {
               const connection = getConnectionState(service.id);
               const runtimeService = serviceRuntimeById[service.id];
+              const svcType = deriveServiceType(service.provider_type);
               return (
                 <div className="service-card" key={service.id}>
                   <div className="service-card-header">
@@ -240,6 +470,16 @@ export function RegistryPage() {
                   </div>
 
                   <div className="badge-row">
+                    <span
+                      className="status-badge"
+                      style={{
+                        background: svcType === "Local" ? "var(--status-gray-bg)" : "var(--status-info-bg)",
+                        color: svcType === "Local" ? "var(--status-gray)" : "var(--status-info-text)",
+                        borderColor: svcType === "Local" ? "var(--status-gray)" : "var(--accent-blue)",
+                      }}
+                    >
+                      {svcType === "Local" ? "🖥 Local" : "☁ Cloud"}
+                    </span>
                     <span className="status-badge status-badge--info">{providerLabels[service.provider_type] || service.provider_type}</span>
                     <span className="status-badge status-badge--info">{service.environment}</span>
                     <span className="status-badge status-badge--neutral">{service.sensitivity}</span>
@@ -260,38 +500,92 @@ export function RegistryPage() {
                     <Link className="button button-secondary" to={`/registry/${service.id}`}>
                       Open details
                     </Link>
-                    <button className="button button-secondary" disabled={!service.connection_ready} onClick={() => handleTest(service.id)} title={service.connection_ready ? "" : service.connection_message} type="button">
-                      Test connection
+                    <button
+                      className="button button-secondary"
+                      disabled={!service.connection_ready || testingId === service.id}
+                      onClick={() => handleTest(service.id)}
+                      title={service.connection_ready ? "" : service.connection_message}
+                      type="button"
+                    >
+                      {testingId === service.id ? "Testing…" : "Test connection"}
                     </button>
-                  <button
-                    className="button button-secondary"
-                    disabled={!canEdit}
-                    onClick={() => {
-                      setEditingId(service.id);
-                      setForm({
-                        name: service.name,
-                        owner: service.owner,
-                        environment: service.environment,
-                        provider_type: service.provider_type,
-                        model_name: service.model_name,
-                        sensitivity: service.sensitivity,
-                        api_endpoint: service.api_endpoint,
-                        api_key_env_var: service.api_key_env_var || "",
-                      });
-                    }}
-                    type="button"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="button button-danger"
-                    disabled={!canEdit}
-                    onClick={() => handleDelete(service.id)}
-                    type="button"
-                  >
-                    Delete
-                  </button>
+                    <button
+                      className="button button-secondary"
+                      disabled={!canEdit}
+                      onClick={() => {
+                        setEditingId(service.id);
+                        setValidationErrors([]);
+                        setForm({
+                          serviceType: deriveServiceType(service.provider_type),
+                          name: service.name,
+                          owner: service.owner,
+                          environment: service.environment,
+                          provider_type: service.provider_type,
+                          model_name: service.model_name,
+                          sensitivity: service.sensitivity,
+                          api_endpoint: service.api_endpoint,
+                          api_key_env_var: service.api_key_env_var || "",
+                        });
+                      }}
+                      type="button"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="button button-danger"
+                      disabled={!canEdit}
+                      onClick={() => handleDelete(service.id)}
+                      type="button"
+                    >
+                      Delete
+                    </button>
                   </div>
+
+                  {/* ── Inline test connection result ── */}
+                  {testResults[service.id] && (() => {
+                    const tr = testResults[service.id];
+                    return (
+                      <div
+                        style={{
+                          marginTop: 4,
+                          padding: "10px 12px",
+                          borderTop: `3px solid ${tr.success ? "var(--status-green)" : "var(--status-red)"}`,
+                          background: tr.success ? "var(--status-green-bg)" : "var(--status-red-bg)",
+                          borderRadius: "0 0 var(--radius-md) var(--radius-md)",
+                          display: "grid",
+                          gap: 4,
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: tr.success ? "var(--status-green)" : "var(--status-red)",
+                          }}>
+                            {tr.success ? "✓ Connection OK" : "✗ Connection failed"}
+                            {tr.latency_ms !== null && (
+                              <span style={{ fontWeight: 400, marginLeft: 6 }}>{tr.latency_ms} ms</span>
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setTestResults((prev) => ({ ...prev, [service.id]: null }))}
+                            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "var(--text-muted)", padding: 0 }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <p style={{ margin: 0, fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                          {tr.detail}
+                        </p>
+                        {tr.response_preview && (
+                          <p style={{ margin: 0, fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--text-muted)", wordBreak: "break-all" }}>
+                            {tr.response_preview}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
