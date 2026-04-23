@@ -6,7 +6,7 @@ import { requireRole } from "../middleware/role.js";
 import { createAuditLogEntry } from "../repositories/auditLogRepository.js";
 import { listLatestEvaluationSummaryByService, listLatestMetricsByService, listRecentEvaluations } from "../repositories/monitoringRepository.js";
 import { getServiceById, listServices } from "../repositories/servicesRepository.js";
-import { buildMonitoringOverview, runEvaluationForService } from "../services/evaluationService.js";
+import { buildMonitoringOverview, runEvaluationForService, goldenDataset } from "../services/evaluationService.js";
 
 export const monitoringRouter = Router();
 
@@ -22,6 +22,15 @@ monitoringRouter.get("/dashboard", (_request, response) => {
       listLatestEvaluationSummaryByService(),
     );
     response.json(data);
+  } catch (error) {
+    sendError(response, error);
+  }
+});
+
+monitoringRouter.get("/golden-dataset", (_request, response) => {
+  try {
+    const questions = goldenDataset.questions.map(({ id, category, prompt }) => ({ id, category, prompt }));
+    response.json({ questions });
   } catch (error) {
     sendError(response, error);
   }

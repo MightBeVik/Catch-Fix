@@ -14,3 +14,7 @@ export function runEvaluation(serviceId) {
     body: JSON.stringify({ service_id: serviceId }),
   });
 }
+
+export function fetchGoldenDataset() {
+  return apiRequest("/monitoring/golden-dataset");
+}

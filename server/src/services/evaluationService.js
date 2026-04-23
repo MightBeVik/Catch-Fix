@@ -10,7 +10,7 @@ import { nowIso } from "../lib/time.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const goldenDatasetRaw = readFileSync(join(__dirname, "../data/golden_dataset.json"), "utf-8");
-const goldenDataset = JSON.parse(goldenDatasetRaw);
+export const goldenDataset = JSON.parse(goldenDatasetRaw);
 
 const piiPatterns = {
   email: /[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+/,
@@ -236,6 +236,7 @@ async function runGoldenEval(service) {
 
     results.push({
       question_id: question.id,
+      question_prompt: question.prompt,
       category: question.category,
       score: scored.score,
       passed: scored.passed,
@@ -289,6 +290,7 @@ export async function runEvaluationForService(service, triggeredBy = "manual") {
       category: r.category,
       result_details: {
         question_id: r.question_id,
+        question_prompt: r.question_prompt,
         passed: r.passed,
         reasoning: r.reasoning,
         output_preview: r.output_preview,
