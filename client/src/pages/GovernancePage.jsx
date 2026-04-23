@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 
+import { formatMDT } from "../lib/time";
+
 import {
   clearOperationalData,
   downloadComplianceExport,
@@ -231,7 +233,7 @@ export function GovernancePage() {
           <tbody>
             {auditLog.map((entry) => (
               <tr key={entry.id}>
-                <td className="mono">{entry.timestamp}</td>
+                <td className="mono">{formatMDT(entry.timestamp)}</td>
                 <td style={{ color: "var(--text-primary)", fontWeight: 600 }}>{entry.action}</td>
                 <td>{entry.entity_type} #{entry.entity_id}</td>
                 <td className="mono">{entry.user_role}</td>

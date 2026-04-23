@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 
+import { formatMDT } from "../lib/time";
+
 import { fetchServiceOverview, testServiceConnection } from "../api/registry";
 
 function EmptyState({ children }) {
@@ -114,7 +116,7 @@ export function ServiceDetailPage() {
               <div className="panel-elevated" style={{ padding: "14px 16px" }} key={metric.id}>
                 <div className="service-card-title" style={{ fontSize: 16 }}>Quality {metric.quality_score}</div>
                 <div className="section-copy" style={{ marginTop: 6 }}>Latency {metric.latency_ms} ms · Error rate {metric.error_rate}%</div>
-                <div className="mono" style={{ marginTop: 8 }}>{metric.timestamp}</div>
+                <div className="mono" style={{ marginTop: 8 }}>{formatMDT(metric.timestamp)}</div>
               </div>
             )) : <EmptyState>No metrics stored yet. Run a monitoring evaluation to populate this service timeline.</EmptyState>}
           </div>
@@ -127,7 +129,7 @@ export function ServiceDetailPage() {
               <div className="panel-elevated" style={{ padding: "14px 16px" }} key={evaluation.id}>
                 <div className="service-card-title" style={{ fontSize: 16 }}>{evaluation.category}</div>
                 <div className="section-copy" style={{ marginTop: 6 }}>Score {evaluation.score}</div>
-                <div className="mono" style={{ marginTop: 8 }}>{evaluation.timestamp}</div>
+                <div className="mono" style={{ marginTop: 8 }}>{formatMDT(evaluation.timestamp)}</div>
               </div>
             )) : <EmptyState>No evaluation history yet.</EmptyState>}
           </div>
@@ -143,7 +145,7 @@ export function ServiceDetailPage() {
                   <span className={`status-badge ${incident.approved ? "status-badge--healthy" : "status-badge--warning"}`}>{incident.approved ? "approved" : "draft"}</span>
                 </div>
                 <div className="section-copy" style={{ marginTop: 8 }}>{incident.symptoms}</div>
-                <div className="mono" style={{ marginTop: 8 }}>Updated {incident.updated_at}</div>
+                <div className="mono" style={{ marginTop: 8 }}>Updated {formatMDT(incident.updated_at)}</div>
               </div>
             )) : <EmptyState>No incidents linked to this service.</EmptyState>}
           </div>
@@ -159,7 +161,7 @@ export function ServiceDetailPage() {
                   <span className={`status-badge ${plan.approved ? "status-badge--healthy" : "status-badge--warning"}`}>{plan.approved ? "approved" : "awaiting approval"}</span>
                 </div>
                 <div className="section-copy" style={{ marginTop: 8 }}>Next evaluation {plan.next_eval_time || "not scheduled"}</div>
-                <div className="mono" style={{ marginTop: 8 }}>Created {plan.created_at}</div>
+                <div className="mono" style={{ marginTop: 8 }}>Created {formatMDT(plan.created_at)}</div>
               </div>
             )) : <EmptyState>No maintenance plans for this service yet.</EmptyState>}
           </div>

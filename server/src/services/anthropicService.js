@@ -24,12 +24,21 @@ const supportedProviders = [
     default_api_key_env_var: "ANTHROPIC_API_KEY",
   },
   {
-    id: "openai-compatible",
-    name: "OpenAI-Compatible / LM Studio",
-    category: "local-or-cloud",
+    id: "openai",
+    name: "OpenAI",
+    category: "cloud",
     interface: "openai-chat-completions",
     default_model: appConfig.openAiModel,
-    default_endpoint: appConfig.openAiEndpoint,
+    default_endpoint: "https://api.openai.com/v1/chat/completions",
+    default_api_key_env_var: "OPENAI_API_KEY",
+  },
+  {
+    id: "openai-compatible",
+    name: "LM Studio / OpenAI-Compatible",
+    category: "local",
+    interface: "openai-chat-completions",
+    default_model: appConfig.openAiModel,
+    default_endpoint: "http://127.0.0.1:1234/v1/chat/completions",
     default_api_key_env_var: "",
   },
   {
@@ -130,6 +139,29 @@ function buildProviderRequest({ provider, service, prompt, system, maxTokens }) 
     };
   }
 
+  if (provider === "openai") {
+    const envVar = service.api_key_env_var || "OPENAI_API_KEY";
+    const apiKey = resolveApiKey({ ...service, api_key_env_var: envVar });
+    if (!apiKey) {
+      throw createHttpError(503, `OpenAI API key not found. Set ${envVar} in server/.env.`);
+    }
+    return {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: {
+        model: service.model_name,
+        messages: [
+          ...(system ? [{ role: "system", content: system }] : []),
+          { role: "user", content: prompt },
+        ],
+        max_tokens: maxTokens,
+      },
+      extractText: extractOpenAiCompatibleText,
+    };
+  }
+
   if (provider === "openai-compatible") {
     const headers = { "Content-Type": "application/json" };
     // Only attach Authorization if an env var name was specified AND the key exists
@@ -172,7 +204,7 @@ function buildProviderRequest({ provider, service, prompt, system, maxTokens }) 
     };
   }
 
-  throw createHttpError(400, `Unsupported provider type: "${provider}". Valid options: anthropic, openai-compatible, ollama.`);
+  throw createHttpError(400, `Unsupported provider type: "${provider}". Valid options: anthropic, openai, openai-compatible, ollama.`);
 }
 
 // ── core LLM caller ───────────────────────────────────────────────────────────
@@ -284,6 +316,19 @@ export function getServiceConnectionStatus(service) {
       connection_message: configured
         ? `Using ${envVarName} for Anthropic authentication.`
         : `Set ${envVarName} in server/.env to enable Anthropic requests.`,
+    };
+  }
+
+  if (normalized.provider_type === "openai") {
+    const envVarName = normalized.api_key_env_var || "OPENAI_API_KEY";
+    const configured = Boolean(process.env[envVarName]);
+    return {
+      provider_type: normalized.provider_type,
+      provider_name: getProviderPreset(normalized.provider_type).name,
+      connection_ready: configured,
+      connection_message: configured
+        ? `Using ${envVarName} for OpenAI authentication.`
+        : `Set ${envVarName} in server/.env to enable OpenAI requests.`,
     };
   }
 

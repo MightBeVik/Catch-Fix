@@ -16,7 +16,7 @@ const serviceSchema = z.object({
   name: z.string().min(2),
   owner: z.string().min(2),
   environment: z.enum(["dev", "prod"]),
-  provider_type: z.enum(["anthropic", "openai-compatible", "ollama"]).default("anthropic"),
+  provider_type: z.enum(["anthropic", "openai", "openai-compatible", "ollama"]).default("anthropic"),
   model_name: z.string().min(2),
   sensitivity: z.enum(["public", "internal", "confidential"]),
   api_endpoint: z.string().url(),

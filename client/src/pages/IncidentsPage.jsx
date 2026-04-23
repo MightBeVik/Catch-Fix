@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 
+import { formatMDT } from "../lib/time";
+
 import { approveIncidentSummary, createIncident, fetchIncidents, generateIncidentSummary } from "../api/incidents";
 import { fetchServices } from "../api/registry";
 
@@ -154,7 +156,7 @@ export function IncidentsPage() {
                     </span>
                   </div>
                 </div>
-                <div className="mono">{new Date(incident.created_at).toLocaleString()}</div>
+                <div className="mono">{formatMDT(incident.created_at)}</div>
               </div>
               <div className="section-copy" style={{ marginTop: 0 }}>{incident.symptoms}</div>
               <div className="section-copy" style={{ marginTop: 0 }}>Timeline: {incident.timeline}</div>

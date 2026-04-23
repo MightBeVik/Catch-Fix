@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Navigate, useOutletContext } from "react-router-dom";
 
+import { formatMDT } from "../lib/time";
+
 import {
   cancelInvitation,
   createInvitation,
@@ -233,7 +235,7 @@ export function SecurityContent({ role, user }) {
                         <span className={`role-badge ${roleBadgeClass(u.role)}`}>{u.role}</span>
                       )}
                     </td>
-                    <td style={{ fontSize: 12 }}>{new Date(u.created_at).toLocaleDateString()}</td>
+                    <td style={{ fontSize: 12 }}>{formatMDT(u.created_at)}</td>
                     <td>
                       {editingUserId === u.id ? (
                         <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>

@@ -165,26 +165,6 @@ export function seedDemoData({ force = false } = {}) {
       api_endpoint: "https://api.anthropic.com/v1/messages",
       api_key_env_var: "ANTHROPIC_API_KEY",
     },
-    {
-      name: "Claims Triage Bot",
-      owner: "Platform Reliability",
-      environment: "prod",
-      provider_type: "openai-compatible",
-      model_name: "gpt-4.1-mini",
-      sensitivity: "confidential",
-      api_endpoint: "http://127.0.0.1:1234/v1/chat/completions",
-      api_key_env_var: null,
-    },
-    {
-      name: "Policy Review Copilot",
-      owner: "Governance Office",
-      environment: "prod",
-      provider_type: "ollama",
-      model_name: "llama3.2",
-      sensitivity: "internal",
-      api_endpoint: "http://127.0.0.1:11434/api/generate",
-      api_key_env_var: null,
-    },
   ];
 
   const services = serviceSpecs.map(ensureService);
@@ -325,42 +305,7 @@ function ensureMonitoringHistory(services) {
 
 function ensureIncidents(services) {
   const serviceByName = new Map(services.map((service) => [service.name, service]));
-  const incidents = [
-    {
-      serviceName: "Claims Triage Bot",
-      severity: "high",
-      symptoms: "Responses began returning malformed JSON for edge-case claim summaries.",
-      timeline: "08:05 drift alert opened. 08:17 maintainer confirmed parse errors in downstream workflow. 08:32 fallback routing enabled.",
-      checklist: {
-        data_issue: false,
-        prompt_change: true,
-        model_update: false,
-        infrastructure_problem: false,
-        safety_policy_failure: false,
-      },
-      llmSummary: "Human-approved summary: malformed JSON was traced to an unreviewed prompt tweak in the triage template. Fallback routing stabilized intake while the prompt was rolled back.",
-      approved: true,
-      createdAt: hoursAgoIso(10),
-      updatedAt: hoursAgoIso(8),
-    },
-    {
-      serviceName: "Policy Review Copilot",
-      severity: "medium",
-      symptoms: "Policy excerpts occasionally included internal contact details that should have been redacted.",
-      timeline: "09:10 reviewer flagged output. 09:25 containment guidance added. 09:40 waiting on approved summary.",
-      checklist: {
-        data_issue: false,
-        prompt_change: false,
-        model_update: false,
-        infrastructure_problem: false,
-        safety_policy_failure: true,
-      },
-      llmSummary: null,
-      approved: false,
-      createdAt: hoursAgoIso(6),
-      updatedAt: hoursAgoIso(3),
-    },
-  ];
+  const incidents = [];
 
   for (const incident of incidents) {
     const service = serviceByName.get(incident.serviceName);
@@ -414,15 +359,6 @@ function ensureMaintenancePlans(services) {
       validationSteps: "Run the registry connection test, execute one manual evaluation, and review governance export entries for the updated prompt path.",
       approved: true,
       createdAt: hoursAgoIso(4),
-    },
-    {
-      serviceName: "Claims Triage Bot",
-      nextEvalTime: hoursFromNowIso(18),
-      riskLevel: "high",
-      rollbackPlan: "Shift traffic to the stable summarization template, freeze further prompt edits, and notify claims intake owners before resuming automation.",
-      validationSteps: "Verify JSON validity across ten sample claims, confirm zero parser failures, and capture maintainer sign-off in the audit log.",
-      approved: true,
-      createdAt: hoursAgoIso(2),
     },
   ];
 
@@ -496,72 +432,6 @@ function monitoringSeedByName(serviceName) {
       preview: '{"status":"ok","summary":"Healthy service output.","actions":["none"]}',
     },
   ];
-
-  if (serviceName === "Claims Triage Bot") {
-    return [
-      {
-        timestamp: hoursAgoIso(26),
-        formattingScore: 100,
-        policyScore: 100,
-        judgeScore: 100,
-        judgeReasoning: "Queue stable.",
-        judgeMatchedFacts: ["status", "summary", "actions", "claim_id_parsed"],
-        judgeMissingFacts: [],
-        qualityScore: 100,
-        latencyMs: 910,
-        errorRate: 0,
-        triggeredBy: "scheduler",
-        preview: '{"status":"ok","summary":"Claims queue stable.","actions":["review queue"]}',
-      },
-      {
-        timestamp: hoursAgoIso(9),
-        formattingScore: 0,
-        policyScore: 100,
-        judgeScore: 50,
-        judgeReasoning: "Missing the 'actions' property.",
-        judgeMatchedFacts: ["status", "summary"],
-        judgeMissingFacts: ["actions", "claim_id_parsed"],
-        qualityScore: 50,
-        latencyMs: 1280,
-        errorRate: 50,
-        triggeredBy: "manual",
-        preview: 'status=warning summary=malformed payload actions=rollback',
-      },
-    ];
-  }
-
-  if (serviceName === "Policy Review Copilot") {
-    return [
-      {
-        timestamp: hoursAgoIso(20),
-        formattingScore: 100,
-        policyScore: 100,
-        judgeScore: 100,
-        judgeReasoning: "All fields present.",
-        judgeMatchedFacts: ["status", "summary", "actions", "policy_citations"],
-        judgeMissingFacts: [],
-        qualityScore: 100,
-        latencyMs: 700,
-        errorRate: 0,
-        triggeredBy: "scheduler",
-        preview: '{"status":"ok","summary":"Policy responses within normal range.","actions":["archive"]}',
-      },
-      {
-        timestamp: hoursAgoIso(5),
-        formattingScore: 100,
-        policyScore: 0,
-        judgeScore: 50,
-        judgeReasoning: "Missing summary component.",
-        judgeMatchedFacts: ["status", "actions"],
-        judgeMissingFacts: ["summary", "policy_citations"],
-        qualityScore: 50,
-        latencyMs: 980,
-        errorRate: 50,
-        triggeredBy: "manual",
-        preview: '{"status":"warning","summary":"Escalate to ops@example.com for review.","actions":["redact"]}',
-      },
-    ];
-  }
 
   return defaults;
 }

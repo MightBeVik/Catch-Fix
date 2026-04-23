@@ -3,6 +3,7 @@ import { Link, useOutletContext } from "react-router-dom";
 
 import { fetchDashboard } from "../api/monitoring";
 import { createService, deleteService, fetchServices, testServiceConnection, updateService } from "../api/registry";
+import { formatMDT } from "../lib/time";
 
 const providerPresets = {
   anthropic: {
@@ -10,6 +11,12 @@ const providerPresets = {
     model_name: "claude-sonnet-4-20250514",
     api_endpoint: "https://api.anthropic.com/v1/messages",
     api_key_env_var: "ANTHROPIC_API_KEY",
+  },
+  openai: {
+    provider_type: "openai",
+    model_name: "gpt-4.1-mini",
+    api_endpoint: "https://api.openai.com/v1/chat/completions",
+    api_key_env_var: "OPENAI_API_KEY",
   },
   "openai-compatible": {
     provider_type: "openai-compatible",
@@ -25,24 +32,23 @@ const providerPresets = {
   },
 };
 
-// All display labels (value stored in DB is always openai-compatible / ollama / anthropic)
 const providerLabels = {
   anthropic: "Anthropic",
-  "openai-compatible": "OpenAI-Compatible / LM Studio",
+  openai: "OpenAI",
+  "openai-compatible": "LM Studio / OpenAI-Compatible",
   ollama: "Ollama",
 };
 
-// Providers visible per service type
 const LOCAL_PROVIDER_OPTIONS = ["ollama", "openai-compatible"];
-const CLOUD_PROVIDER_OPTIONS = ["anthropic"];
+const CLOUD_PROVIDER_OPTIONS = ["anthropic", "openai"];
 
 function deriveServiceType(provider_type) {
   return LOCAL_PROVIDER_OPTIONS.includes(provider_type) ? "Local" : "Cloud";
 }
 
-function createBlankForm(providerType = "openai-compatible") {
+function createBlankForm(providerType = "anthropic") {
   return {
-    serviceType: "Local",
+    serviceType: "Cloud",
     name: "",
     owner: "",
     environment: "dev",
@@ -490,7 +496,7 @@ export function RegistryPage() {
 
                   <div className="service-meta">
                     <span>Last connection latency: <span className="mono">{connection.latency}</span></span>
-                    <span>Last evaluated: <span className="mono">{runtimeService?.latest_metric?.timestamp ?? "Never"}</span></span>
+                    <span>Last evaluated: <span className="mono">{runtimeService?.latest_metric?.timestamp ? formatMDT(runtimeService.latest_metric.timestamp) : "Never"}</span></span>
                     <span>{service.connection_message}</span>
                     <span className="mono">{service.api_key_env_var || "No server auth env var configured"}</span>
                     <span className="mono">{service.api_endpoint}</span>

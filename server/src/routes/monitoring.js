@@ -12,6 +12,7 @@ export const monitoringRouter = Router();
 
 const runSchema = z.object({
   service_id: z.number().int().positive().optional(),
+  mode: z.enum(["mini", "full"]).default("mini"),
 });
 
 monitoringRouter.get("/dashboard", (_request, response) => {
@@ -56,7 +57,7 @@ monitoringRouter.post("/evaluations/run", requireRole("Admin", "Maintainer"), as
       throw createHttpError(404, "Service not found.");
     }
 
-    const result = await runEvaluationForService(service, "manual");
+    const result = await runEvaluationForService(service, "manual", payload.mode);
     createAuditLogEntry({
       username: request.user?.username || "",
       userRole: request.userRole,

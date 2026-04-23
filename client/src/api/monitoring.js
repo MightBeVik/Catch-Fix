@@ -8,10 +8,10 @@ export function fetchEvaluations() {
   return apiRequest("/monitoring/evaluations");
 }
 
-export function runEvaluation(serviceId) {
+export function runEvaluation(serviceId, mode = "mini") {
   return apiRequest("/monitoring/evaluations/run", {
     method: "POST",
-    body: JSON.stringify({ service_id: serviceId }),
+    body: JSON.stringify({ service_id: serviceId, mode }),
   });
 }
 
