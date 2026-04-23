@@ -489,16 +489,18 @@ export function RegistryPage() {
                     <span className="status-badge status-badge--info">{providerLabels[service.provider_type] || service.provider_type}</span>
                     <span className="status-badge status-badge--info">{service.environment}</span>
                     <span className="status-badge status-badge--neutral">{service.sensitivity}</span>
-                    <span className={`status-badge ${service.connection_ready ? "status-badge--healthy" : "status-badge--warning"}`}>
-                      {service.connection_ready ? "ready" : "needs config"}
-                    </span>
+                    {testingId === service.id ? (
+                      <span className="status-badge status-badge--info">Connecting in Progress</span>
+                    ) : service.connection_ready && testResults[service.id]?.success === false ? null : (
+                      <span className={`status-badge ${service.connection_ready ? "status-badge--healthy" : "status-badge--warning"}`}>
+                        {service.connection_ready ? "ready" : "needs config"}
+                      </span>
+                    )}
                   </div>
 
                   <div className="service-meta">
                     <span>Last connection latency: <span className="mono">{connection.latency}</span></span>
                     <span>Last evaluated: <span className="mono">{runtimeService?.latest_metric?.timestamp ? formatMDT(runtimeService.latest_metric.timestamp) : "Never"}</span></span>
-                    <span>{service.connection_message}</span>
-                    <span className="mono">{service.api_key_env_var || "No server auth env var configured"}</span>
                     <span className="mono">{service.api_endpoint}</span>
                   </div>
 
