@@ -283,6 +283,7 @@ function ensureMonitoringHistory(services) {
           output_preview: snapshot.preview,
           triggered_by: snapshot.triggeredBy,
         }),
+        snapshot.timestamp,
       );
 
       db.prepare(`

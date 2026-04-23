@@ -9,7 +9,7 @@ dotenv.config();
 const port = Number(process.env.PORT || 3001);
 const app = createApp();
 
-app.listen(port, "127.0.0.1", () => {
+app.listen(port, "0.0.0.0", () => {
   startEvaluationJob();
-  console.log(`Catch-Fix server listening on http://127.0.0.1:${port}`);
+  console.log(`Catch-Fix server listening on port ${port}`);
 });

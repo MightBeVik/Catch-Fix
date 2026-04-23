@@ -1,6 +1,11 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import { existsSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 import { ensureDefaultAdmin, healthCheckDatabase, initializeDatabase, seedDemoData } from "../db.js";
 import { requireAuth } from "./middleware/auth.js";
@@ -31,6 +36,13 @@ export function createApp() {
 
   // All other API routes require a valid JWT
   app.use("/api", requireAuth, apiRouter);
+
+  // Serve built client in production
+  const clientDist = join(__dirname, "../../client/dist");
+  if (existsSync(clientDist)) {
+    app.use(express.static(clientDist));
+    app.get("*", (_req, res) => res.sendFile(join(clientDist, "index.html")));
+  }
 
   return app;
 }
