@@ -5,6 +5,7 @@ import { startEvaluationJob } from "./jobs/evaluationJob.js";
 
 dotenv.config();
 
+// Auto-triggering reload after releasing ghost port 3001
 const port = Number(process.env.PORT || 3001);
 const app = createApp();
 

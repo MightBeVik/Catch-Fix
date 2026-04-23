@@ -7,6 +7,7 @@ import {
   deleteUser,
   fetchInvitations,
   fetchUsers,
+  updateUser,
 } from "../api/users";
 
 const ROLE_OPTIONS = ["Viewer", "Maintainer", "Admin"];
@@ -19,13 +20,9 @@ function isExpired(expiresAt) {
   return new Date(expiresAt) < new Date();
 }
 
-export function SecurityPage() {
-  const { role, user } = useOutletContext();
+export function SecurityContent({ role, user }) {
+  // We can skip the Navigate check here because it's handled by the wrapper or the parent
 
-  // Redirect non-admins
-  if (role !== "Admin") {
-    return <Navigate to="/dashboard" replace />;
-  }
 
   const [users, setUsers] = useState([]);
   const [invitations, setInvitations] = useState([]);
@@ -35,6 +32,20 @@ export function SecurityPage() {
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [inviteAction, setInviteAction] = useState("");
+
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [editingUserRole, setEditingUserRole] = useState("Viewer");
+
+  async function handleUpdateUserRole(id) {
+    try {
+      await updateUser(id, { role: editingUserRole });
+      setStatus("User role updated.");
+      setEditingUserId(null);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
 
   async function load() {
     const [u, i] = await Promise.all([fetchUsers(), fetchInvitations()]);
@@ -103,7 +114,7 @@ export function SecurityPage() {
       <div className="page-header">
         <div>
           <p className="eyebrow">Admin only</p>
-          <h2 className="page-title">Security</h2>
+          <h2 className="page-title">User Access Management</h2>
           <p className="page-description">Manage users, roles, and invitations.</p>
         </div>
       </div>
@@ -111,12 +122,12 @@ export function SecurityPage() {
       {error && <div className="callout callout--danger" style={{ padding: "10px 14px" }}>{error}</div>}
       {status && !error && <div className="status-message">{status}</div>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", gap: 24, alignItems: "start" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-start" }}>
 
-        {/* Add collaborator */}
-        <div className="panel" style={{ display: "grid", gap: 16 }}>
+        {/* Add User */}
+        <div className="panel" style={{ flex: "1 1 340px", maxWidth: "420px", display: "grid", gap: 16 }}>
           <div>
-            <h3 className="section-title">Add Collaborator</h3>
+            <h3 className="section-title">Add User</h3>
             <p className="section-copy">Enter their email and role. Generate a shareable invite link or send the invitation directly by email. They’ll validate the invite, then choose a username and password.</p>
           </div>
 
@@ -183,15 +194,16 @@ export function SecurityPage() {
         </div>
 
         {/* Right column */}
-        <div style={{ display: "grid", gap: 24 }}>
+        <div style={{ flex: "2 1 500px", minWidth: 0, display: "grid", gap: 24 }}>
 
-          {/* Active users */}
+          {/* Active Users */}
           <div className="panel" style={{ padding: 0, overflow: "hidden" }}>
             <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
               <h3 className="section-title" style={{ fontSize: 15 }}>Active Users</h3>
             </div>
-            <table className="data-table" style={{ width: "100%" }}>
-              <thead>
+            <div style={{ overflowX: "auto" }}>
+              <table className="data-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
+                <thead>
                 <tr>
                   <th>Username</th>
                   <th>Email</th>
@@ -205,27 +217,79 @@ export function SecurityPage() {
                   <tr key={u.id}>
                     <td style={{ fontWeight: 500, color: "var(--text-primary)" }}>{u.username}</td>
                     <td className="mono" style={{ fontSize: 12 }}>{u.email}</td>
-                    <td><span className={`role-badge ${roleBadgeClass(u.role)}`}>{u.role}</span></td>
+                    <td>
+                      {editingUserId === u.id ? (
+                        <select
+                          className="select"
+                          style={{ padding: "4px 8px", fontSize: 12, minHeight: 0 }}
+                          value={editingUserRole}
+                          onChange={(e) => setEditingUserRole(e.target.value)}
+                        >
+                          {ROLE_OPTIONS.map((r) => (
+                            <option key={r} value={r}>{r}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className={`role-badge ${roleBadgeClass(u.role)}`}>{u.role}</span>
+                      )}
+                    </td>
                     <td style={{ fontSize: 12 }}>{new Date(u.created_at).toLocaleDateString()}</td>
                     <td>
-                      {u.id !== user?.id && (
-                        <button
-                          className="button button-danger"
-                          style={{ padding: "4px 10px", minHeight: "unset", fontSize: 12 }}
-                          onClick={() => handleDeleteUser(u.id)}
-                          type="button"
-                        >
-                          Remove
-                        </button>
-                      )}
-                      {u.id === user?.id && (
-                        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>you</span>
+                      {editingUserId === u.id ? (
+                        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                          <button
+                            className="button button-primary"
+                            style={{ padding: "4px 10px", minHeight: "unset", fontSize: 12 }}
+                            onClick={() => handleUpdateUserRole(u.id)}
+                            type="button"
+                          >
+                            Save
+                          </button>
+                          <button
+                            className="button button-secondary"
+                            style={{ padding: "4px 10px", minHeight: "unset", fontSize: 12 }}
+                            onClick={() => setEditingUserId(null)}
+                            type="button"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                          {u.id !== user?.id && (
+                            <>
+                              <button
+                                className="button button-secondary"
+                                style={{ padding: "4px 10px", minHeight: "unset", fontSize: 12 }}
+                                onClick={() => {
+                                  setEditingUserId(u.id);
+                                  setEditingUserRole(u.role);
+                                }}
+                                type="button"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                className="button button-danger"
+                                style={{ padding: "4px 10px", minHeight: "unset", fontSize: 12 }}
+                                onClick={() => handleDeleteUser(u.id)}
+                                type="button"
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
+                          {u.id === user?.id && (
+                            <span style={{ fontSize: 11, color: "var(--text-muted)", marginTop: "4px" }}>you</span>
+                          )}
+                        </div>
                       )}
                     </td>
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
 
           {/* Pending invitations */}
@@ -234,8 +298,9 @@ export function SecurityPage() {
               <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
                 <h3 className="section-title" style={{ fontSize: 15 }}>Pending Invitations</h3>
               </div>
-              <table className="data-table" style={{ width: "100%" }}>
-                <thead>
+              <div style={{ overflowX: "auto" }}>
+                <table className="data-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
+                  <thead>
                   <tr>
                     <th>Email</th>
                     <th>Role</th>
@@ -264,7 +329,8 @@ export function SecurityPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             </div>
           )}
 
@@ -274,8 +340,9 @@ export function SecurityPage() {
               <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)" }}>
                 <h3 className="section-title" style={{ fontSize: 15 }}>Invite History</h3>
               </div>
-              <table className="data-table" style={{ width: "100%" }}>
-                <thead>
+              <div style={{ overflowX: "auto" }}>
+                <table className="data-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
+                  <thead>
                   <tr>
                     <th>Email</th>
                     <th>Role</th>
@@ -297,11 +364,22 @@ export function SecurityPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             </div>
           )}
         </div>
       </div>
     </div>
   );
+}
+
+export function SecurityPage() {
+  const { role, user } = useOutletContext();
+
+  if (role !== "Admin") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <SecurityContent role={role} user={user} />;
 }

@@ -55,3 +55,10 @@ export function updateProfileEmail(email) {
     body: JSON.stringify({ email }),
   });
 }
+
+export function updateProfilePassword(currentPassword, newPassword) {
+  return apiRequest("/auth/me/password", {
+    method: "PATCH",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}

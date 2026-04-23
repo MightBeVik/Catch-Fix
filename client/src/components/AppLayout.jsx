@@ -11,7 +11,6 @@ const navItems = [
   { to: "/incidents", label: "Incidents" },
   { to: "/maintenance", label: "Maintenance" },
   { to: "/governance", label: "Governance" },
-  { to: "/security", label: "Security" },
   { to: "/settings", label: "Settings" },
 ];
 

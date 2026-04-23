@@ -57,6 +57,37 @@ usersRouter.post("/", requireRole("Admin"), (request, response, next) => {
   }
 });
 
+const updateUserSchema = z.object({
+  role: z.enum(["Admin", "Maintainer", "Viewer"]).optional(),
+});
+
+usersRouter.patch("/:id", requireRole("Admin"), (request, response, next) => {
+  try {
+    const id = Number(request.params.id);
+    const { role } = updateUserSchema.parse(request.body);
+
+    // Ensure the last Admin is not demoted
+    if (role && role !== 'Admin') {
+      const userToVerify = db.prepare("SELECT role FROM users WHERE id = ?").get(id);
+      if (userToVerify && userToVerify.role === 'Admin') {
+        const adminCount = db.prepare("SELECT COUNT(*) AS count FROM users WHERE role = 'Admin'").get().count;
+        if (adminCount <= 1) {
+          throw createHttpError(400, "Cannot demote the last admin account.");
+        }
+      }
+    }
+
+    const info = db.prepare("UPDATE users SET role = COALESCE(?, role) WHERE id = ?").run(role, id);
+    if (info.changes === 0) throw createHttpError(404, "User not found.");
+
+    const updated = db.prepare("SELECT id, username, email, role, created_at FROM users WHERE id = ?").get(id);
+    response.json(updated);
+  } catch (error) {
+    sendError(response, error);
+    next();
+  }
+});
+
 usersRouter.patch("/:id/password", requireRole("Admin"), (request, response, next) => {
   try {
     const id = Number(request.params.id);

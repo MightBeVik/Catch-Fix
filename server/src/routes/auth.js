@@ -32,6 +32,11 @@ const updateProfileSchema = z.object({
   email: z.string().email("Enter a valid email address."),
 });
 
+const updateUserPasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required."),
+  newPassword: z.string().min(8, "New password must be at least 8 characters."),
+});
+
 authRouter.post("/login", (request, response, next) => {
   try {
     const { username, password } = request.body || {};
@@ -196,6 +201,29 @@ authRouter.patch("/me", requireAuth, (request, response, next) => {
       .get(request.user.id);
 
     response.json({ user });
+  } catch (error) {
+    sendError(response, error);
+    next();
+  }
+});
+
+authRouter.patch("/me/password", requireAuth, (request, response, next) => {
+  try {
+    const { currentPassword, newPassword } = updateUserPasswordSchema.parse(request.body || {});
+    
+    const user = db.prepare("SELECT password_hash FROM users WHERE id = ?").get(request.user.id);
+    if (!user || !bcrypt.compareSync(currentPassword, user.password_hash)) {
+      throw createHttpError(401, "Incorrect current password.");
+    }
+
+    const hash = bcrypt.hashSync(newPassword, 10);
+    const info = db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hash, request.user.id);
+    
+    if (info.changes === 0) {
+      throw createHttpError(404, "User not found.");
+    }
+    
+    response.json({ ok: true });
   } catch (error) {
     sendError(response, error);
     next();

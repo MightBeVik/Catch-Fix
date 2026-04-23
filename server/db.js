@@ -5,6 +5,7 @@ import path from "node:path";
 
 const databasePath = process.env.DATABASE_PATH || "./data/catch_fix.db";
 const resolvedPath = path.resolve(process.cwd(), databasePath);
+console.log("!!! DATABASE RESOLVED AT:", resolvedPath);
 
 fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
 

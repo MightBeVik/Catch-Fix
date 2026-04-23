@@ -8,6 +8,9 @@ export const createUser = (payload) =>
 export const deleteUser = (id) =>
   apiRequest(`/users/${id}`, { method: "DELETE" });
 
+export const updateUser = (id, payload) =>
+  apiRequest(`/users/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+
 export const fetchInvitations = () => apiRequest("/invitations");
 
 export const createInvitation = (payload) =>
