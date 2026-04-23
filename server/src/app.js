@@ -30,6 +30,7 @@ export function createApp() {
     response.json({
       status: "ok",
       service: "Overwatch Server",
+      version: "2",
       smtp: {
         host: process.env.SMTP_HOST || null,
         port: process.env.SMTP_PORT || null,
