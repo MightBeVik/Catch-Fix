@@ -72,14 +72,21 @@ export function listRecentEvaluationsForService(serviceId, limit = 10) {
   return rows.map(mapEvaluationRow);
 }
 
-export function listEvaluationsForExport(sinceIso) {
-  const rows = db.prepare(`
-    SELECT *
-    FROM evaluations
-    WHERE timestamp >= ?
-    ORDER BY timestamp DESC, id DESC
-  `).all(sinceIso);
+export function listEvaluationsForExport(startDate, endDate) {
+  let query = `SELECT * FROM evaluations WHERE 1=1`;
+  const params = [];
 
+  if (startDate) {
+    query += ` AND timestamp >= ?`;
+    params.push(startDate);
+  }
+  if (endDate) {
+    query += ` AND timestamp <= ?`;
+    params.push(endDate);
+  }
+
+  query += ` ORDER BY timestamp DESC, id DESC`;
+  const rows = db.prepare(query).all(...params);
   return rows.map(mapEvaluationRow);
 }
 

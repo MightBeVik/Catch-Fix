@@ -115,6 +115,13 @@ export function initializeDatabase() {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS governance_policy (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT NOT NULL UNIQUE,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   ensureColumn("services", "provider_type", "TEXT NOT NULL DEFAULT 'anthropic'");
@@ -186,6 +193,62 @@ export function seedDemoData({ force = false } = {}) {
   ensureMonitoringHistory(services);
   ensureIncidents(services);
   ensureMaintenancePlans(services);
+  seedPolicy();
+}
+
+export function seedPolicy() {
+  const policies = [
+    {
+      key: "data_stored",
+      value: JSON.stringify([
+        "Service registry metadata and endpoints",
+        "Evaluation results and derived metrics",
+        "Incident records and approved summaries",
+        "Maintenance plans and audit log entries",
+      ]),
+    },
+    {
+      key: "prompts_logged",
+      value: "Prompts are not retained beyond evaluation and incident workflow result details needed for governance records.",
+    },
+    {
+      key: "llm_routing",
+      value: "LLM requests are routed from the backend through Anthropic, OpenAI-compatible, and Ollama adapters. API keys, when required, never leave the server.",
+    },
+    {
+      key: "retention",
+      value: "SQLite data is stored locally in the server data directory for this course project and retained until manually removed.",
+    },
+  ];
+
+  for (const policy of policies) {
+    db.prepare(`
+      INSERT OR IGNORE INTO governance_policy (key, value)
+      VALUES (?, ?)
+    `).run(policy.key, policy.value);
+  }
+}
+
+export function getPolicy() {
+  const rows = db.prepare("SELECT key, value FROM governance_policy").all();
+  const policy = {};
+  for (const row of rows) {
+    try {
+      policy[row.key] = JSON.parse(row.value);
+    } catch {
+      policy[row.key] = row.value;
+    }
+  }
+  return policy;
+}
+
+export function updatePolicyValue(key, value) {
+  const valueStr = typeof value === "string" ? value : JSON.stringify(value);
+  db.prepare(`
+    UPDATE governance_policy 
+    SET value = ?, updated_at = CURRENT_TIMESTAMP 
+    WHERE key = ?
+  `).run(valueStr, key);
 }
 
 export function resetAndSeedDemoData({ force = false } = {}) {

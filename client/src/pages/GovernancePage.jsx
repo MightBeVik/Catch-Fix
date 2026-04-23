@@ -10,10 +10,12 @@ import {
   fetchPolicy,
   fetchRoles,
   fetchRuntimeStatus,
+  fetchUsers,
   reseedDemoData,
   resetDemoData,
   runEvaluationCycle,
   setSchedulerState,
+  updatePolicy,
 } from "../api/governance";
 import { isAdmin } from "../lib/roles";
 
@@ -23,21 +25,25 @@ export function GovernancePage() {
   const [policy, setPolicy] = useState(null);
   const [auditLog, setAuditLog] = useState([]);
   const [runtime, setRuntime] = useState(null);
-  const [sortOrder, setSortOrder] = useState("desc");
-  const [status, setStatus] = useState("");
+  const [users, setUsers] = useState([]);
+  const [filters, setFilters] = useState({ action: "", role: "", startDate: "", endDate: "" });
+  const [exportRange, setExportRange] = useState({ startDate: "", endDate: "" });
+  const [editingPolicy, setEditingPolicy] = useState(null);
   const adminEnabled = isAdmin(role);
 
-  async function load(order = sortOrder) {
-    const [roleData, policyData, auditData, runtimeData] = await Promise.all([
+  async function load(order = sortOrder, currentFilters = filters) {
+    const [roleData, policyData, auditData, runtimeData, userData] = await Promise.all([
       fetchRoles(),
       fetchPolicy(),
-      fetchAuditLog(order),
+      fetchAuditLog({ order, ...currentFilters }),
       fetchRuntimeStatus(),
+      adminEnabled ? fetchUsers() : Promise.resolve({ items: [] }),
     ]);
     setRoles(roleData.roles || []);
     setPolicy(policyData);
     setAuditLog(auditData.items || []);
     setRuntime(runtimeData);
+    setUsers(userData.items || []);
   }
 
   useEffect(() => {
@@ -47,7 +53,17 @@ export function GovernancePage() {
   async function handleSort(order) {
     setSortOrder(order);
     try {
-      await load(order);
+      await load(order, filters);
+    } catch (error) {
+      setStatus(error.message);
+    }
+  }
+
+  async function handleFilter(newFilters) {
+    const updated = { ...filters, ...newFilters };
+    setFilters(updated);
+    try {
+      await load(sortOrder, updated);
     } catch (error) {
       setStatus(error.message);
     }
@@ -55,8 +71,19 @@ export function GovernancePage() {
 
   async function handleExport() {
     try {
-      await downloadComplianceExport();
+      await downloadComplianceExport(exportRange);
       setStatus("Compliance export downloaded.");
+    } catch (error) {
+      setStatus(error.message);
+    }
+  }
+
+  async function handlePolicyUpdate(key, value) {
+    try {
+      await updatePolicy(key, value);
+      setEditingPolicy(null);
+      await load(sortOrder, filters);
+      setStatus("Policy updated.");
     } catch (error) {
       setStatus(error.message);
     }
@@ -103,9 +130,29 @@ export function GovernancePage() {
             Demo role switching, audit visibility, data handling policy disclosure, and compliance evidence export.
           </p>
         </div>
-        <button className="button button-primary" onClick={handleExport} type="button">
-          Export compliance JSON
-        </button>
+        <div className="button-row" style={{ alignItems: "flex-end" }}>
+          <div className="field-stack" style={{ minWidth: 140 }}>
+            <div className="field-label" style={{ fontSize: 11 }}>Export Start</div>
+            <input 
+              className="input" 
+              type="date" 
+              value={exportRange.startDate} 
+              onChange={(e) => setExportRange({ ...exportRange, startDate: e.target.value })} 
+            />
+          </div>
+          <div className="field-stack" style={{ minWidth: 140 }}>
+            <div className="field-label" style={{ fontSize: 11 }}>Export End</div>
+            <input 
+              className="input" 
+              type="date" 
+              value={exportRange.endDate} 
+              onChange={(e) => setExportRange({ ...exportRange, endDate: e.target.value })} 
+            />
+          </div>
+          <button className="button button-primary" onClick={handleExport} type="button">
+            Export compliance JSON
+          </button>
+        </div>
       </div>
 
       <div className="info-grid">
@@ -126,8 +173,43 @@ export function GovernancePage() {
           <div className="field-stack" style={{ marginTop: 16 }}>
             {policy ? Object.entries(policy).map(([key, value]) => (
               <div className="panel-elevated" style={{ padding: "14px 16px" }} key={key}>
-                <div className="field-label">{key.replaceAll("_", " ")}</div>
-                <div className="section-copy" style={{ marginTop: 8 }}>{Array.isArray(value) ? value.join(", ") : value}</div>
+                <div className="section-row">
+                  <div className="field-label">{key.replaceAll("_", " ")}</div>
+                  {adminEnabled && (
+                    <button 
+                      className="button button-secondary" 
+                      onClick={() => setEditingPolicy({ key, value: Array.isArray(value) ? value.join(", ") : value })} 
+                      style={{ padding: "4px 8px", fontSize: 11 }}
+                      type="button"
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+                {editingPolicy?.key === key ? (
+                  <div className="field-stack" style={{ marginTop: 8 }}>
+                    <textarea 
+                      className="input" 
+                      onChange={(e) => setEditingPolicy({ ...editingPolicy, value: e.target.value })}
+                      rows={3} 
+                      value={editingPolicy.value} 
+                    />
+                    <div className="button-row">
+                      <button 
+                        className="button button-primary" 
+                        onClick={() => handlePolicyUpdate(key, key === "data_stored" ? editingPolicy.value.split(",").map(s => s.trim()) : editingPolicy.value)}
+                        type="button"
+                      >
+                        Save
+                      </button>
+                      <button className="button button-secondary" onClick={() => setEditingPolicy(null)} type="button">Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="section-copy" style={{ marginTop: 8 }}>
+                    {Array.isArray(value) ? value.join(", ") : value}
+                  </div>
+                )}
               </div>
             )) : null}
           </div>
@@ -211,10 +293,61 @@ export function GovernancePage() {
         </div>
       </div>
 
+      {adminEnabled && (
+        <div className="panel" style={{ marginTop: 24 }}>
+          <h4 className="section-title">Active Platform Users (Admins Only)</h4>
+          <div className="table-shell" style={{ marginTop: 16 }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Joined</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map(u => (
+                  <tr key={u.id}>
+                    <td style={{ fontWeight: 600 }}>{u.username}</td>
+                    <td>{u.email}</td>
+                    <td><span className="badge">{u.role}</span></td>
+                    <td className="mono">{formatMDT(u.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       <div className="table-shell">
-        <div className="section-row" style={{ padding: "18px 20px", borderBottom: "1px solid var(--border)" }}>
+        <div className="section-row" style={{ padding: "18px 20px", borderBottom: "1px solid var(--border)", flexWrap: "wrap", gap: 16 }}>
           <h4 className="section-title">Audit log</h4>
-          <div className="button-row">
+          <div className="button-row" style={{ flexWrap: "wrap" }}>
+            <div className="field-stack" style={{ minWidth: 120 }}>
+              <select className="input" onChange={(e) => handleFilter({ action: e.target.value })} value={filters.action}>
+                <option value="">All Actions</option>
+                <option value="service_created">Service Created</option>
+                <option value="incident_created">Incident Created</option>
+                <option value="incident_resolved">Incident Resolved</option>
+                <option value="maintenance_plan_created">Maintenance Created</option>
+              </select>
+            </div>
+            <div className="field-stack" style={{ minWidth: 100 }}>
+              <select className="input" onChange={(e) => handleFilter({ role: e.target.value })} value={filters.role}>
+                <option value="">All Roles</option>
+                <option value="Admin">Admin</option>
+                <option value="Maintainer">Maintainer</option>
+                <option value="Viewer">Viewer</option>
+              </select>
+            </div>
+            <div className="field-stack" style={{ minWidth: 140 }}>
+              <input className="input" onChange={(e) => handleFilter({ startDate: e.target.value })} type="date" value={filters.startDate} />
+            </div>
+            <div className="field-stack" style={{ minWidth: 140 }}>
+              <input className="input" onChange={(e) => handleFilter({ endDate: e.target.value })} type="date" value={filters.endDate} />
+            </div>
             <button className="button button-secondary" onClick={() => handleSort("desc")} type="button">Newest first</button>
             <button className="button button-secondary" onClick={() => handleSort("asc")} type="button">Oldest first</button>
           </div>

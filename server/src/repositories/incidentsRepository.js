@@ -92,8 +92,22 @@ export function saveIncidentSummary(id, llmSummary) {
   return getIncidentById(id);
 }
 
-export function listIncidentsForExport() {
-  return listIncidents();
+export function listIncidentsForExport({ startDate, endDate } = {}) {
+  let query = `SELECT * FROM incidents WHERE 1=1`;
+  const params = [];
+
+  if (startDate) {
+    query += ` AND updated_at >= ?`;
+    params.push(startDate);
+  }
+  if (endDate) {
+    query += ` AND updated_at <= ?`;
+    params.push(endDate);
+  }
+
+  query += ` ORDER BY updated_at DESC`;
+  const rows = db.prepare(query).all(...params);
+  return rows.map(mapIncidentRow);
 }
 
 function mapIncidentRow(row) {

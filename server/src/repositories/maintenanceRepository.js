@@ -91,8 +91,22 @@ export function updateMaintenancePlan(id, payload) {
   return getMaintenancePlanById(id);
 }
 
-export function listMaintenancePlansForExport() {
-  return listMaintenancePlans();
+export function listMaintenancePlansForExport({ startDate, endDate } = {}) {
+  let query = `SELECT * FROM maintenance_plans WHERE 1=1`;
+  const params = [];
+
+  if (startDate) {
+    query += ` AND created_at >= ?`;
+    params.push(startDate);
+  }
+  if (endDate) {
+    query += ` AND created_at <= ?`;
+    params.push(endDate);
+  }
+
+  query += ` ORDER BY created_at DESC`;
+  const rows = db.prepare(query).all(...params);
+  return rows.map(mapMaintenanceRow);
 }
 
 function mapMaintenanceRow(row) {

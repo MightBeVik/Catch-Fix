@@ -27,9 +27,32 @@ export function getAuditLogEntryById(id) {
   return deserializeAuditRow(row);
 }
 
-export function listAuditLog({ order = "desc" } = {}) {
+export function listAuditLog({ order = "desc", action, role, startDate, endDate } = {}) {
   const sortDirection = order === "asc" ? "ASC" : "DESC";
-  const rows = db.prepare(`SELECT * FROM audit_log ORDER BY timestamp ${sortDirection}, id ${sortDirection}`).all();
+  
+  let query = `SELECT * FROM audit_log WHERE 1=1`;
+  const params = [];
+
+  if (action) {
+    query += ` AND action = ?`;
+    params.push(action);
+  }
+  if (role) {
+    query += ` AND user_role = ?`;
+    params.push(role);
+  }
+  if (startDate) {
+    query += ` AND timestamp >= ?`;
+    params.push(startDate);
+  }
+  if (endDate) {
+    query += ` AND timestamp <= ?`;
+    params.push(endDate);
+  }
+
+  query += ` ORDER BY timestamp ${sortDirection}, id ${sortDirection}`;
+  
+  const rows = db.prepare(query).all(...params);
   return rows.map(deserializeAuditRow);
 }
 

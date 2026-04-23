@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { appConfig } from "../config.js";
-import { clearOperationalData, getOperationalCounts, resetAndSeedDemoData, seedDemoData } from "../../db.js";
+import { clearOperationalData, getOperationalCounts, getPolicy, resetAndSeedDemoData, seedDemoData, updatePolicyValue } from "../../db.js";
 import { addDays, nowIso } from "../lib/time.js";
 import { getEvaluationJobStatus, startEvaluationJob, stopEvaluationJob, triggerEvaluationJobNow } from "../jobs/evaluationJob.js";
 import { demoRoles } from "../middleware/role.js";
@@ -19,21 +19,29 @@ governanceRouter.get("/roles", (_request, response) => {
 });
 
 governanceRouter.get("/policy", (_request, response) => {
-  response.json({
-    data_stored: [
-      "Service registry metadata and endpoints",
-      "Evaluation results and derived metrics",
-      "Incident records and approved summaries",
-      "Maintenance plans and audit log entries",
-    ],
-    prompts_logged: "Prompts are not retained beyond evaluation and incident workflow result details needed for governance records.",
-    llm_routing: "LLM requests are routed from the backend through Anthropic, OpenAI-compatible, and Ollama adapters. API keys, when required, never leave the server.",
-    retention: "SQLite data is stored locally in the server data directory for this course project and retained until manually removed.",
-  });
+  response.json(getPolicy());
+});
+
+governanceRouter.patch("/policy", requireRole("Admin"), (request, response) => {
+  const { key, value } = request.body || {};
+  if (!key || value === undefined) {
+    return response.status(400).json({ error: "Key and value are required." });
+  }
+  updatePolicyValue(key, value);
+  response.json({ ok: true, policy: getPolicy() });
 });
 
 governanceRouter.get("/audit-log", (request, response) => {
-  response.json({ items: listAuditLog({ order: request.query.order === "asc" ? "asc" : "desc" }) });
+  const { order, action, role, startDate, endDate } = request.query;
+  response.json({ 
+    items: listAuditLog({ 
+      order: order === "asc" ? "asc" : "desc",
+      action,
+      role,
+      startDate,
+      endDate
+    }) 
+  });
 });
 
 governanceRouter.get("/runtime-status", (_request, response) => {
@@ -87,21 +95,25 @@ governanceRouter.post("/admin/scheduler", requireRole("Admin"), (request, respon
 });
 
 governanceRouter.get("/compliance-export", (request, response) => {
-  const endDate = new Date();
-  const startDate = addDays(endDate, -30);
+  const endDateStr = request.query.endDate || new Date().toISOString();
+  const startDateStr = request.query.startDate || addDays(new Date(endDateStr), -30).toISOString();
+  
+  const endDate = new Date(endDateStr);
+  const startDate = new Date(startDateStr);
+
   const exportPayload = {
     exported_at: nowIso(),
     date_range: {
       start: startDate.toISOString(),
       end: endDate.toISOString(),
     },
-    evaluation_summaries: listEvaluationsForExport(startDate.toISOString()),
-    incidents: listIncidentsForExport(),
-    maintenance_actions_taken: listMaintenancePlansForExport(),
-    audit_log_entries: listAuditLog({ order: "desc" }),
+    evaluation_summaries: listEvaluationsForExport(startDate.toISOString(), endDate.toISOString()),
+    incidents: listIncidentsForExport({ startDate: startDate.toISOString(), endDate: endDate.toISOString() }),
+    maintenance_actions_taken: listMaintenancePlansForExport({ startDate: startDate.toISOString(), endDate: endDate.toISOString() }),
+    audit_log_entries: listAuditLog({ order: "desc", startDate: startDate.toISOString(), endDate: endDate.toISOString() }),
   };
 
   const timestamp = endDate.toISOString().replace(/[:.]/g, "-");
-  response.setHeader("Content-Disposition", `attachment; filename=\"compliance_export_${timestamp}.json\"`);
+  response.setHeader("Content-Disposition", `attachment; filename="compliance_export_${timestamp}.json"`);
   response.json(exportPayload);
 });

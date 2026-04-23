@@ -8,12 +8,24 @@ export function fetchPolicy() {
   return apiRequest("/governance/policy");
 }
 
-export function fetchAuditLog(order = "desc") {
-  return apiRequest(`/governance/audit-log?order=${order}`);
+export function updatePolicy(key, value) {
+  return apiRequest("/governance/policy", {
+    method: "PATCH",
+    body: JSON.stringify({ key, value }),
+  });
+}
+
+export function fetchAuditLog(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  return apiRequest(`/governance/audit-log?${query}`);
 }
 
 export function fetchRuntimeStatus() {
   return apiRequest("/governance/runtime-status");
+}
+
+export function fetchUsers() {
+  return apiRequest("/users");
 }
 
 export function reseedDemoData() {
@@ -39,6 +51,7 @@ export function setSchedulerState(action) {
   });
 }
 
-export function downloadComplianceExport() {
-  return downloadJson("/governance/compliance-export", "compliance_export");
+export function downloadComplianceExport(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  return downloadJson(`/governance/compliance-export?${query}`, "compliance_export");
 }
