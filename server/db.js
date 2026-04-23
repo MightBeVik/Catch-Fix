@@ -170,6 +170,16 @@ export function seedDemoData({ force = false } = {}) {
       api_endpoint: "https://api.anthropic.com/v1/messages",
       api_key_env_var: "ANTHROPIC_API_KEY",
     },
+    {
+      name: "Sam Altman's Worst Nightmare",
+      owner: "AIM Team",
+      environment: "dev",
+      provider_type: "openai",
+      model_name: "gpt-4.1-mini",
+      sensitivity: "internal",
+      api_endpoint: "https://api.openai.com/v1/chat/completions",
+      api_key_env_var: "OPENAI_API_KEY",
+    },
   ];
 
   const services = serviceSpecs.map(ensureService);
