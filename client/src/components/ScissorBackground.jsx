@@ -2,6 +2,9 @@ import { useEffect, useRef } from "react";
 
 const SCISSOR_RADIUS = 180;
 const LERP = 0.10;
+const NOISE_SCALE = 4;
+const NOISE_ALPHA = 20;
+const NOISE_FRAMES = 12; // pre-baked frames to cycle through
 
 export function ScissorBackground() {
   const canvasRef = useRef(null);
@@ -18,9 +21,35 @@ export function ScissorBackground() {
     let current = { x: -9999, y: -9999 };
     let entered = false;
 
+    // Pre-bake noise frames once — cheap to cycle, free at draw time
+    let noiseFrames = [];
+    let noiseFrame = 0;
+
+    function buildNoiseFrames(w, h) {
+      noiseFrames = [];
+      const nw = Math.ceil(w / NOISE_SCALE);
+      const nh = Math.ceil(h / NOISE_SCALE);
+      for (let f = 0; f < NOISE_FRAMES; f++) {
+        const nc = document.createElement("canvas");
+        nc.width = nw;
+        nc.height = nh;
+        const nctx = nc.getContext("2d");
+        const imageData = nctx.createImageData(nw, nh);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const v = (Math.random() * 180) | 0;
+          data[i] = v; data[i+1] = v; data[i+2] = v;
+          data[i+3] = (Math.random() * NOISE_ALPHA) | 0;
+        }
+        nctx.putImageData(imageData, 0, 0);
+        noiseFrames.push(nc);
+      }
+    }
+
     function resize() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
+      buildNoiseFrames(canvas.width, canvas.height);
     }
     resize();
     window.addEventListener("resize", resize);
@@ -75,6 +104,15 @@ export function ScissorBackground() {
       ctx.beginPath();
       ctx.arc(width*0.8, height*0.2, 180, 0, 2*Math.PI);
       ctx.fill();
+
+      // Cycle through pre-baked noise frames — zero CPU cost per frame
+      if (noiseFrames.length) {
+        noiseFrame = (noiseFrame + 1) % NOISE_FRAMES;
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(noiseFrames[noiseFrame], 0, 0, width, height);
+        ctx.restore();
+      }
 
       // Feathered circular reveal for the logo
       if (img.complete && img.naturalWidth > 0 && entered) {

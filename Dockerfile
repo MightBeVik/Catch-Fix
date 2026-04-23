@@ -2,19 +2,20 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Install client deps and build
+# Copy workspace manifests and root lockfile
+COPY package*.json ./
 COPY client/package*.json ./client/
-RUN npm ci --prefix client
-COPY client/ ./client/
-RUN npm run build --prefix client
-
-# Install server deps
 COPY server/package*.json ./server/
-RUN npm ci --prefix server
 
-# Copy server source
+# Install all workspace deps from root lockfile
+RUN npm ci
+
+# Copy source
+COPY client/ ./client/
 COPY server/ ./server/
 
+# Build client
+RUN npm run build --prefix client
+
 EXPOSE 3001
-ENV PORT=3001
 CMD ["node", "--experimental-sqlite", "server/src/index.js"]

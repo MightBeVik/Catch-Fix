@@ -27,7 +27,18 @@ export function createApp() {
 
   app.get("/health", (_request, response) => {
     healthCheckDatabase();
-    response.json({ status: "ok", service: "Overwatch Server" });
+    response.json({
+      status: "ok",
+      service: "Overwatch Server",
+      version: "2",
+      smtp: {
+        host: process.env.SMTP_HOST || null,
+        port: process.env.SMTP_PORT || null,
+        user: process.env.SMTP_USER || null,
+        from_email: process.env.SMTP_FROM_EMAIL || null,
+        enabled: Boolean(process.env.SMTP_HOST && process.env.SMTP_FROM_EMAIL),
+      },
+    });
   });
 
   // Public routes — no token required
