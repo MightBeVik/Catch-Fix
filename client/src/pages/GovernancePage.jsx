@@ -8,7 +8,6 @@ import {
   downloadComplianceExport,
   fetchAuditLog,
   fetchPolicy,
-  fetchRoles,
   reseedDemoData,
   resetDemoData,
   runEvaluationCycle,
@@ -21,7 +20,6 @@ import { isAdmin } from "../lib/roles";
 
 export function GovernancePage() {
   const { role } = useOutletContext();
-  const [roles, setRoles] = useState([]);
   const [policy, setPolicy] = useState(null);
   const [auditLog, setAuditLog] = useState([]);
   const [maintenancePlans, setMaintenancePlans] = useState([]);
@@ -34,14 +32,12 @@ export function GovernancePage() {
   const adminEnabled = isAdmin(role);
 
   async function load(order = sortOrder, currentFilters = filters) {
-    const [roleData, policyData, auditData, maintenanceData, userData] = await Promise.all([
-      fetchRoles(),
+    const [policyData, auditData, maintenanceData, userData] = await Promise.all([
       fetchPolicy(),
       fetchAuditLog({ order, ...currentFilters }),
       fetchMaintenancePlans({ includeArchived: false }),
       adminEnabled ? fetchUsers() : Promise.resolve({ items: [] }),
     ]);
-    setRoles(roleData.roles || []);
     setPolicy(policyData);
     setAuditLog(auditData.items || []);
     setMaintenancePlans(maintenanceData.items || []);
@@ -163,18 +159,6 @@ export function GovernancePage() {
 
       <div className="info-grid">
         <div className="panel">
-          <h4 className="section-title">Role access model</h4>
-          <div className="field-stack" style={{ marginTop: 16 }}>
-            {roles.map((item) => (
-              <div className="panel-elevated" style={{ padding: "14px 16px" }} key={item}>
-                <div className="service-card-title" style={{ fontSize: 16 }}>{item}</div>
-                <div className="muted" style={{ marginTop: 4 }}>Current selected role: {role}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="panel">
           <h4 className="section-title">Data handling policy</h4>
           <div className="field-stack" style={{ marginTop: 16 }}>
             {policy ? Object.entries(policy).map(([key, value]) => (
@@ -250,35 +234,6 @@ export function GovernancePage() {
           </div>
         </div>
 
-        <div className="panel">
-          <h4 className="section-title">Admin Utilities</h4>
-          <p className="section-copy">
-            Use these controls to run evaluation cycles, pause or resume the scheduler, and manage the seeded operational dataset.
-          </p>
-          <div className="field-stack" style={{ marginTop: 16 }}>
-            <button className="button button-secondary" disabled={!adminEnabled} onClick={() => handleAdminAction("run")} type="button">
-              Run evaluation cycle now
-            </button>
-            <button className="button button-secondary" disabled={!adminEnabled} onClick={() => handleAdminAction("pause")} type="button">
-              Pause scheduler
-            </button>
-            <button className="button button-secondary" disabled={!adminEnabled} onClick={() => handleAdminAction("resume")} type="button">
-              Resume scheduler
-            </button>
-            <button className="button button-secondary" disabled={!adminEnabled} onClick={() => handleAdminAction("reseed")} type="button">
-              Reseed demo data
-            </button>
-            <button className="button button-warning" disabled={!adminEnabled} onClick={() => handleAdminAction("reset")} type="button">
-              Reset and reseed demo data
-            </button>
-            <button className="button button-danger" disabled={!adminEnabled} onClick={() => handleAdminAction("clear")} type="button">
-              Clear operational data
-            </button>
-          </div>
-          {!adminEnabled && (
-            <p className="section-copy" style={{ marginTop: 12 }}>Only the Admin role can use control-plane actions.</p>
-          )}
-        </div>
       </div>
 
       {adminEnabled && (

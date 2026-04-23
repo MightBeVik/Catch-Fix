@@ -1,9 +1,5 @@
 import { apiRequest, downloadJson } from "./client";
 
-export function fetchRoles() {
-  return apiRequest("/governance/roles");
-}
-
 export function fetchPolicy() {
   return apiRequest("/governance/policy");
 }
