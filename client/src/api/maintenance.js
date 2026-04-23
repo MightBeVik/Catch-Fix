@@ -1,7 +1,19 @@
 import { apiRequest } from "./client";
 
-export function fetchMaintenancePlans() {
-  return apiRequest("/maintenance/plans");
+export function fetchMaintenancePlans({ includeArchived = false } = {}) {
+  return apiRequest(`/maintenance/plans${includeArchived ? "?include_archived=true" : ""}`);
+}
+
+export function approvePlan(id) {
+  return apiRequest(`/maintenance/plans/${id}/approve`, { method: "POST" });
+}
+
+export function completePlan(id) {
+  return apiRequest(`/maintenance/plans/${id}/complete`, { method: "POST" });
+}
+
+export function cancelPlan(id) {
+  return apiRequest(`/maintenance/plans/${id}/cancel`, { method: "POST" });
 }
 
 export function createMaintenancePlan(payload) {

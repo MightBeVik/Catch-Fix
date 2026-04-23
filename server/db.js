@@ -120,6 +120,11 @@ export function initializeDatabase() {
   ensureColumn("services", "provider_type", "TEXT NOT NULL DEFAULT 'anthropic'");
   ensureColumn("services", "api_key_env_var", "TEXT");
   ensureColumn("audit_log", "username", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn("incidents", "resolved", "INTEGER NOT NULL DEFAULT 0");
+  ensureColumn("incidents", "resolved_at", "TEXT");
+  ensureColumn("maintenance_plans", "status", "TEXT NOT NULL DEFAULT 'pending'");
+  ensureColumn("maintenance_plans", "completed_at", "TEXT");
+  ensureColumn("maintenance_plans", "eval_mode", "TEXT NOT NULL DEFAULT 'full'");
 }
 
 export function ensureDefaultAdmin() {

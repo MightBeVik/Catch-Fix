@@ -1,7 +1,11 @@
 import { apiRequest } from "./client";
 
-export function fetchIncidents() {
-  return apiRequest("/incidents/");
+export function fetchIncidents({ includeResolved = false } = {}) {
+  return apiRequest(`/incidents/${includeResolved ? "?include_resolved=true" : ""}`);
+}
+
+export function resolveIncident(id) {
+  return apiRequest(`/incidents/${id}/resolve`, { method: "POST" });
 }
 
 export function createIncident(payload) {

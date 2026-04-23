@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createHttpError, sendError } from "../lib/httpError.js";
 import { requireRole } from "../middleware/role.js";
 import { createAuditLogEntry } from "../repositories/auditLogRepository.js";
-import { createMaintenancePlan, getMaintenancePlanById, listMaintenancePlans, updateMaintenancePlan } from "../repositories/maintenanceRepository.js";
+import { approvePlan, cancelPlan, completePlan, createMaintenancePlan, getMaintenancePlanById, listMaintenancePlans, updateMaintenancePlan } from "../repositories/maintenanceRepository.js";
 import { getServiceById } from "../repositories/servicesRepository.js";
 import { draftRollbackPlan } from "../services/anthropicService.js";
 
@@ -16,23 +16,48 @@ const maintenanceSchema = z.object({
   risk_level: z.enum(["low", "medium", "high"]),
   rollback_plan: z.string().min(5),
   validation_steps: z.string().min(5),
-  approved: z.boolean(),
+  eval_mode: z.enum(["mini", "full"]).default("full"),
 });
 
-maintenanceRouter.get("/plans", (_request, response) => {
+maintenanceRouter.get("/plans", (request, response) => {
   try {
-    response.json({ items: listMaintenancePlans() });
+    const includeArchived = request.query.include_archived === "true";
+    response.json({ items: listMaintenancePlans({ includeArchived }) });
   } catch (error) {
     sendError(response, error);
   }
 });
 
+maintenanceRouter.post("/plans/:id/approve", requireRole("Admin", "Maintainer"), (request, response) => {
+  try {
+    const plan = approvePlan(Number(request.params.id));
+    if (!plan) throw createHttpError(404, "Plan not found or not in pending status.");
+    createAuditLogEntry({ username: request.user?.username || "", userRole: request.userRole, action: "maintenance_plan_approved", entityType: "maintenance_plan", entityId: plan.id, newValue: plan });
+    response.json(plan);
+  } catch (error) { sendError(response, error); }
+});
+
+maintenanceRouter.post("/plans/:id/complete", requireRole("Admin", "Maintainer"), (request, response) => {
+  try {
+    const plan = completePlan(Number(request.params.id));
+    if (!plan) throw createHttpError(404, "Plan not found or not in approved status.");
+    createAuditLogEntry({ username: request.user?.username || "", userRole: request.userRole, action: "maintenance_plan_completed", entityType: "maintenance_plan", entityId: plan.id, newValue: plan });
+    response.json(plan);
+  } catch (error) { sendError(response, error); }
+});
+
+maintenanceRouter.post("/plans/:id/cancel", requireRole("Admin", "Maintainer"), (request, response) => {
+  try {
+    const plan = cancelPlan(Number(request.params.id));
+    if (!plan) throw createHttpError(404, "Plan not found or already completed.");
+    createAuditLogEntry({ username: request.user?.username || "", userRole: request.userRole, action: "maintenance_plan_cancelled", entityType: "maintenance_plan", entityId: plan.id, newValue: plan });
+    response.json(plan);
+  } catch (error) { sendError(response, error); }
+});
+
 maintenanceRouter.post("/plans", requireRole("Admin", "Maintainer"), (request, response) => {
   try {
     const payload = maintenanceSchema.parse(request.body);
-    if (!payload.approved) {
-      throw createHttpError(400, "Human approval must be checked before saving a maintenance plan.");
-    }
     const service = getServiceById(payload.service_id);
     if (!service) {
       throw createHttpError(404, "Service not found.");
@@ -55,9 +80,6 @@ maintenanceRouter.post("/plans", requireRole("Admin", "Maintainer"), (request, r
 maintenanceRouter.put("/plans/:id", requireRole("Admin", "Maintainer"), (request, response) => {
   try {
     const payload = maintenanceSchema.parse(request.body);
-    if (!payload.approved) {
-      throw createHttpError(400, "Human approval must be checked before saving a maintenance plan.");
-    }
     const existing = getMaintenancePlanById(Number(request.params.id));
     if (!existing) {
       throw createHttpError(404, "Maintenance plan not found.");

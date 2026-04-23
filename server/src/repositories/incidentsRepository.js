@@ -1,8 +1,10 @@
 import { db } from "../../db.js";
 import { nowIso } from "../lib/time.js";
 
-export function listIncidents() {
-  const rows = db.prepare(`SELECT * FROM incidents ORDER BY updated_at DESC, id DESC`).all();
+export function listIncidents({ includeResolved = false } = {}) {
+  const rows = includeResolved
+    ? db.prepare(`SELECT * FROM incidents ORDER BY updated_at DESC, id DESC`).all()
+    : db.prepare(`SELECT * FROM incidents WHERE resolved = 0 ORDER BY updated_at DESC, id DESC`).all();
   return rows.map(mapIncidentRow);
 }
 
@@ -68,6 +70,18 @@ export function updateIncident(id, payload) {
   return getIncidentById(id);
 }
 
+export function resolveIncident(id) {
+  const existing = getIncidentById(id);
+  if (!existing || !existing.approved) return null;
+  db.prepare(`UPDATE incidents SET resolved = 1, resolved_at = ?, updated_at = ? WHERE id = ?`).run(nowIso(), nowIso(), id);
+  return getIncidentById(id);
+}
+
+export function saveDraftSummary(id, llmSummary) {
+  db.prepare(`UPDATE incidents SET llm_summary = ?, updated_at = ? WHERE id = ?`).run(llmSummary, nowIso(), id);
+  return getIncidentById(id);
+}
+
 export function saveIncidentSummary(id, llmSummary) {
   const existing = getIncidentById(id);
   if (!existing) {
@@ -83,10 +97,7 @@ export function listIncidentsForExport() {
 }
 
 function mapIncidentRow(row) {
-  if (!row) {
-    return null;
-  }
-
+  if (!row) return null;
   return {
     id: row.id,
     service_name: row.service_name,
@@ -96,6 +107,8 @@ function mapIncidentRow(row) {
     checklist_json: JSON.parse(row.checklist_json),
     llm_summary: row.llm_summary,
     approved: Boolean(row.approved),
+    resolved: Boolean(row.resolved),
+    resolved_at: row.resolved_at || null,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };

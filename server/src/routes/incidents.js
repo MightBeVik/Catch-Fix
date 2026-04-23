@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createHttpError, sendError } from "../lib/httpError.js";
 import { requireRole } from "../middleware/role.js";
 import { createAuditLogEntry } from "../repositories/auditLogRepository.js";
-import { createIncident, getIncidentById, listIncidents, saveIncidentSummary, updateIncident } from "../repositories/incidentsRepository.js";
+import { createIncident, getIncidentById, listIncidents, resolveIncident, saveIncidentSummary, updateIncident } from "../repositories/incidentsRepository.js";
 import { getServiceByName } from "../repositories/servicesRepository.js";
 import { draftIncidentSummary } from "../services/anthropicService.js";
 
@@ -28,9 +28,10 @@ const incidentSchema = z.object({
   approved: z.boolean().default(false),
 });
 
-incidentsRouter.get("/", (_request, response) => {
+incidentsRouter.get("/", (request, response) => {
   try {
-    response.json({ items: listIncidents() });
+    const includeResolved = request.query.include_resolved === "true";
+    response.json({ items: listIncidents({ includeResolved }) });
   } catch (error) {
     sendError(response, error);
   }
@@ -98,6 +99,26 @@ incidentsRouter.post("/:id/generate-summary", requireRole("Admin", "Maintainer")
       draft_summary: summary,
       review_required: true,
     });
+  } catch (error) {
+    sendError(response, error);
+  }
+});
+
+incidentsRouter.post("/:id/resolve", requireRole("Admin", "Maintainer"), (request, response) => {
+  try {
+    const incident = resolveIncident(Number(request.params.id));
+    if (!incident) {
+      throw createHttpError(404, "Incident not found or not yet approved.");
+    }
+    createAuditLogEntry({
+      username: request.user?.username || "",
+      userRole: request.userRole,
+      action: "incident_resolved",
+      entityType: "incident",
+      entityId: incident.id,
+      newValue: incident,
+    });
+    response.json(incident);
   } catch (error) {
     sendError(response, error);
   }

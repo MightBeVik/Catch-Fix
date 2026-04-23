@@ -1,8 +1,9 @@
 import cron from "node-cron";
 
 import { appConfig } from "../config.js";
-import { listServices } from "../repositories/servicesRepository.js";
-import { runScheduledEvaluationForAllServices } from "../services/evaluationService.js";
+import { completePlan, listDueApprovedPlans } from "../repositories/maintenanceRepository.js";
+import { getServiceById, listServices } from "../repositories/servicesRepository.js";
+import { runEvaluationForService, runScheduledEvaluationForAllServices } from "../services/evaluationService.js";
 
 let scheduledTask = null;
 let jobEnabled = true;
@@ -19,8 +20,27 @@ export function startEvaluationJob() {
     return scheduledTask;
   }
 
+  // Main eval cron — runs all services on the configured interval (default every 30 min)
   scheduledTask = cron.schedule(appConfig.evaluationCron, async () => {
     await triggerEvaluationJobNow("scheduler");
+  });
+
+  // Maintenance watcher — checks every minute for due approved plans and evaluates just that service
+  cron.schedule("* * * * *", async () => {
+    const duePlans = listDueApprovedPlans();
+    for (const plan of duePlans) {
+      const service = getServiceById(plan.service_id);
+      if (!service) {
+        completePlan(plan.id);
+        continue;
+      }
+      try {
+        await runEvaluationForService(service, "maintenance", plan.eval_mode || "full");
+      } catch {
+        // eval failed — still complete the plan so it doesn't re-fire next minute
+      }
+      completePlan(plan.id);
+    }
   });
 
   return scheduledTask;

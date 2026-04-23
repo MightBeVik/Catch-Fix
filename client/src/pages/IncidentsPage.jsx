@@ -3,7 +3,7 @@ import { Link, useOutletContext } from "react-router-dom";
 
 import { formatMDT } from "../lib/time";
 
-import { approveIncidentSummary, createIncident, fetchIncidents, generateIncidentSummary } from "../api/incidents";
+import { approveIncidentSummary, createIncident, fetchIncidents, generateIncidentSummary, resolveIncident } from "../api/incidents";
 import { fetchServices } from "../api/registry";
 
 const defaultChecklist = {
@@ -30,16 +30,20 @@ export function IncidentsPage() {
   const [form, setForm] = useState(blankForm);
   const [drafts, setDrafts] = useState({});
   const [status, setStatus] = useState("");
+  const [showResolved, setShowResolved] = useState(false);
 
   async function loadPage() {
-    const [incidentData, serviceData] = await Promise.all([fetchIncidents(), fetchServices()]);
+    const [incidentData, serviceData] = await Promise.all([
+      fetchIncidents({ includeResolved: showResolved }),
+      fetchServices(),
+    ]);
     setIncidents(incidentData.items || []);
     setServices(serviceData.items || []);
   }
 
   useEffect(() => {
     loadPage().catch((error) => setStatus(error.message));
-  }, []);
+  }, [showResolved]);
 
   useEffect(() => {
     if (!form.service_name && services[0]) {
@@ -75,20 +79,46 @@ export function IncidentsPage() {
   async function handleApprove(id) {
     try {
       await approveIncidentSummary(id, drafts[id]);
-      setStatus("Incident summary approved and saved.");
+      setStatus("Incident approved.");
       await loadPage();
     } catch (error) {
       setStatus(error.message);
     }
   }
 
+  async function handleResolve(id) {
+    try {
+      await resolveIncident(id);
+      setStatus("Incident resolved and removed from queue.");
+      await loadPage();
+    } catch (error) {
+      setStatus(error.message);
+    }
+  }
+
+  function incidentStatus(incident) {
+    if (incident.resolved) return { label: "Resolved", color: "var(--text-secondary)", badge: "status-badge--neutral" };
+    if (incident.approved) return { label: "Approved", color: "var(--status-green)", badge: "status-badge--healthy" };
+    return { label: "Pending Review", color: "var(--status-yellow)", badge: "status-badge--warning" };
+  }
+
   return (
     <section className="page">
-      <div>
-        <h3 className="page-title">Incident Triage</h3>
-        <p className="page-description">
-          Create incidents, mark troubleshooting hypotheses, generate review-only LLM summaries, and explicitly approve before persistence.
-        </p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h3 className="page-title">Incident Triage</h3>
+          <p className="page-description">
+            Create incidents, generate AI summaries, approve, and resolve. Pending → Approved → Resolved.
+          </p>
+        </div>
+        <button
+          className="button button-secondary"
+          type="button"
+          onClick={() => setShowResolved((v) => !v)}
+          style={{ marginTop: 4, flexShrink: 0 }}
+        >
+          {showResolved ? "Hide Resolved" : "Show Resolved"}
+        </button>
       </div>
 
       <div className="split-layout" style={{ gridTemplateColumns: "minmax(0, 1.6fr) minmax(340px, 1fr)" }}>
@@ -135,57 +165,124 @@ export function IncidentsPage() {
         </form>
 
         <div className="field-stack">
-          {incidents.map((incident) => (
-            <div className="review-panel" key={incident.id}>
-              <div className="review-panel-label">AI-Generated - Pending Review</div>
-              <div className="section-row">
-                <div>
-                  {serviceIdByName[incident.service_name] ? (
-                    <Link className="service-card-title" to={`/registry/${serviceIdByName[incident.service_name]}`}>
-                      {incident.service_name}
-                    </Link>
-                  ) : (
-                    <div className="service-card-title">{incident.service_name}</div>
-                  )}
-                  <div className="badge-row" style={{ marginTop: 8 }}>
-                    <span className={`status-badge ${incident.severity === "critical" || incident.severity === "high" ? "status-badge--critical" : incident.severity === "medium" ? "status-badge--warning" : "status-badge--neutral"}`}>
-                      {incident.severity}
-                    </span>
-                    <span className={`status-badge ${incident.approved ? "status-badge--healthy" : "status-badge--warning"}`}>
-                      {incident.approved ? "Approved" : "Pending review"}
-                    </span>
+          {incidents.length === 0 && (
+            <div className="panel" style={{ textAlign: "center", color: "var(--text-secondary)", padding: 32 }}>
+              {showResolved ? "No incidents found." : "No open incidents. All clear!"}
+            </div>
+          )}
+          {incidents.map((incident) => {
+            const status = incidentStatus(incident);
+            const linkedService = services.find((s) => s.name === incident.service_name);
+            const isResolved = incident.resolved;
+            return (
+              <div className="review-panel" key={incident.id} style={{ opacity: isResolved ? 0.6 : 1 }}>
+
+                {/* Header */}
+                <div className="section-row">
+                  <div>
+                    {serviceIdByName[incident.service_name] ? (
+                      <Link className="service-card-title" to={`/registry/${serviceIdByName[incident.service_name]}`}>
+                        {incident.service_name}
+                      </Link>
+                    ) : (
+                      <div className="service-card-title">{incident.service_name}</div>
+                    )}
+                    <div className="badge-row" style={{ marginTop: 8 }}>
+                      <span className={`status-badge ${incident.severity === "critical" || incident.severity === "high" ? "status-badge--critical" : incident.severity === "medium" ? "status-badge--warning" : "status-badge--neutral"}`}>
+                        {incident.severity}
+                      </span>
+                      <span className={`status-badge ${status.badge}`}>{status.label}</span>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div className="mono" style={{ fontSize: 12 }}>{formatMDT(incident.created_at)}</div>
+                    {isResolved && incident.resolved_at && (
+                      <div className="mono" style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>
+                        Resolved {formatMDT(incident.resolved_at)}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="mono">{formatMDT(incident.created_at)}</div>
-              </div>
-              <div className="section-copy" style={{ marginTop: 0 }}>{incident.symptoms}</div>
-              <div className="section-copy" style={{ marginTop: 0 }}>Timeline: {incident.timeline}</div>
-              <div>
-                <div className="field-label">Draft Review Panel</div>
-                <textarea
-                  className="textarea"
-                  style={{ marginTop: 10, minHeight: 180 }}
-                  disabled={!canEdit}
-                  value={drafts[incident.id] ?? incident.llm_summary ?? "No draft generated yet."}
-                  onChange={(event) => setDrafts((current) => ({ ...current, [incident.id]: event.target.value }))}
-                />
-              </div>
-              <div className="button-row">
-                <button
-                  className="button button-secondary"
-                  disabled={!canEdit || !services.find((service) => service.name === incident.service_name)?.connection_ready}
-                  onClick={() => handleGenerateSummary(incident.id)}
-                  title={services.find((service) => service.name === incident.service_name)?.connection_ready ? "" : services.find((service) => service.name === incident.service_name)?.connection_message || "Select a configured service to generate a summary."}
-                  type="button"
-                >
-                  Generate summary
-                </button>
-                <button className="button button-primary" disabled={!canEdit || !drafts[incident.id]} onClick={() => handleApprove(incident.id)} type="button">
-                  Approve
-                </button>
+
+                {/* Status flow indicator */}
+                <div style={{ display: "flex", gap: 6, alignItems: "center", margin: "12px 0 8px" }}>
+                  {[
+                    { key: "created", label: "Created", done: true },
+                    { key: "approved", label: "Approved", done: incident.approved },
+                    { key: "resolved", label: "Resolved", done: incident.resolved },
+                  ].map((step, i, arr) => (
+                    <div key={step.key} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{
+                        width: 8, height: 8, borderRadius: "50%",
+                        background: step.done ? "var(--status-green)" : "var(--border)",
+                        flexShrink: 0,
+                      }} />
+                      <span style={{ fontSize: 11, color: step.done ? "var(--text-primary)" : "var(--text-secondary)", fontWeight: step.done ? 600 : 400 }}>
+                        {step.label}
+                      </span>
+                      {i < arr.length - 1 && <span style={{ color: "var(--border)", fontSize: 11, margin: "0 2px" }}>→</span>}
+                    </div>
+                  ))}
                 </div>
+
+                <div className="section-copy" style={{ marginTop: 0 }}>{incident.symptoms}</div>
+                <div className="section-copy" style={{ marginTop: 0 }}>Timeline: {incident.timeline}</div>
+
+                {/* Summary panel — hidden once resolved */}
+                {!isResolved && (
+                  <div>
+                    <div className="field-label">AI Summary Draft</div>
+                    <textarea
+                      className="textarea"
+                      style={{ marginTop: 10, minHeight: 140 }}
+                      disabled={!canEdit || incident.approved}
+                      value={drafts[incident.id] ?? incident.llm_summary ?? ""}
+                      placeholder="No draft yet — click Generate Summary."
+                      onChange={(event) => setDrafts((current) => ({ ...current, [incident.id]: event.target.value }))}
+                    />
+                  </div>
+                )}
+
+                {/* Actions */}
+                {!isResolved && (
+                  <div className="button-row">
+                    {!incident.approved && (
+                      <>
+                        <button
+                          className="button button-secondary"
+                          disabled={!canEdit || !linkedService?.connection_ready}
+                          onClick={() => handleGenerateSummary(incident.id)}
+                          title={linkedService?.connection_ready ? "" : linkedService?.connection_message || "Service not configured."}
+                          type="button"
+                        >
+                          Generate Summary
+                        </button>
+                        <button
+                          className="button button-primary"
+                          disabled={!canEdit || !(drafts[incident.id] ?? incident.llm_summary)}
+                          onClick={() => handleApprove(incident.id)}
+                          type="button"
+                        >
+                          Approve
+                        </button>
+                      </>
+                    )}
+                    {incident.approved && (
+                      <button
+                        className="button button-primary"
+                        disabled={!canEdit}
+                        onClick={() => handleResolve(incident.id)}
+                        type="button"
+                        style={{ background: "var(--status-green)", borderColor: "var(--status-green)" }}
+                      >
+                        Mark as Resolved
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
