@@ -4,13 +4,13 @@ WORKDIR /app
 
 # Install client deps and build
 COPY client/package*.json ./client/
-RUN npm ci --prefix client
+RUN npm install --prefix client
 COPY client/ ./client/
 RUN npm run build --prefix client
 
 # Install server deps
 COPY server/package*.json ./server/
-RUN npm ci --prefix server
+RUN npm install --prefix server
 
 # Copy server source
 COPY server/ ./server/
