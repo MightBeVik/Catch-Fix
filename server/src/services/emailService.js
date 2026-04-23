@@ -8,6 +8,7 @@ function createTransporter() {
     host: appConfig.smtpHost,
     port: appConfig.smtpPort,
     secure: appConfig.smtpSecure,
+    family: 4, // force IPv4 — Railway containers can't reach IPv6 SMTP
     auth: {
       user: appConfig.smtpUser,
       pass: appConfig.smtpPass,
