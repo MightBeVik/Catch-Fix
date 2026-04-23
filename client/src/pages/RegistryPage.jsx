@@ -491,10 +491,12 @@ export function RegistryPage() {
                     <span className="status-badge status-badge--neutral">{service.sensitivity}</span>
                     {testingId === service.id ? (
                       <span className="status-badge status-badge--info">Connecting in Progress</span>
-                    ) : service.connection_ready && testResults[service.id]?.success === false ? null : (
-                      <span className={`status-badge ${service.connection_ready ? "status-badge--healthy" : "status-badge--warning"}`}>
-                        {service.connection_ready ? "ready" : "needs config"}
-                      </span>
+                    ) : !service.connection_ready ? (
+                      <span className="status-badge status-badge--warning">needs config</span>
+                    ) : testResults[service.id]?.success || runtimeService?.latest_metric ? (
+                      <span className="status-badge status-badge--healthy">ready</span>
+                    ) : testResults[service.id]?.success === false ? null : (
+                      <span className="status-badge status-badge--neutral">untested</span>
                     )}
                   </div>
 
