@@ -123,6 +123,43 @@ export function MonitoringPage() {
 
   const goldenCategories = ["reasoning_logic", "domain_knowledge", "safety_refusals", "instruction_following"];
 
+  function triggerDownload(data, filename) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${filename}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadRunReport(run) {
+    const compositeScore = Math.round(run.evals.reduce((s, e) => s + e.score, 0) / run.evals.length);
+    triggerDownload({
+      exported_at: new Date().toISOString(),
+      service: serviceNameById[run.service_id] || `Service #${run.service_id}`,
+      service_id: run.service_id,
+      timestamp: run.timestamp,
+      type: run.evals.length <= 7 ? "mini" : "full",
+      composite_score: compositeScore,
+      evaluations: run.evals,
+    }, `eval_report_${run.service_id}_${run.timestamp.replace(/[:.]/g, "-")}`);
+  }
+
+  function downloadEvalReport(result) {
+    triggerDownload({
+      exported_at: new Date().toISOString(),
+      service: result.service.name,
+      service_id: result.service.id,
+      timestamp: result.evaluations[0]?.timestamp || new Date().toISOString(),
+      type: evalMode,
+      quality_score: result.quality_score,
+      drift_flagged: result.drift_flagged,
+      metric: result.metric,
+      evaluations: result.evaluations,
+    }, `eval_report_${result.service.id}_${new Date().toISOString().replace(/[:.]/g, "-")}`);
+  }
+
   return (
     <section className="page">
       <div className="page-header">
@@ -278,6 +315,7 @@ export function MonitoringPage() {
                   <span className={`status-dot ${evalResult.drift_flagged ? "status-dot--critical" : "status-dot--live"}`} />
                   {evalResult.drift_flagged ? "Drift detected" : "Healthy"}
                 </span>
+                <button className="button button-secondary" onClick={() => downloadEvalReport(evalResult)} type="button">Export report</button>
                 <button className="button" onClick={() => setEvalResult(null)} type="button" style={{ marginLeft: 8 }}>Dismiss</button>
               </div>
             </div>
@@ -455,6 +493,7 @@ export function MonitoringPage() {
               <th>Passed</th>
               <th>Composite Score</th>
               <th>Timestamp</th>
+              <th style={{ width: 80 }} />
               <th style={{ width: 32 }} />
             </tr>
           </thead>
@@ -490,6 +529,16 @@ export function MonitoringPage() {
                     <td className="mono">{passCount} / {run.evals.length}</td>
                     <td><span className={scoreBadgeClass(compositeScore)}>{compositeScore}</span></td>
                     <td className="mono">{formatMDT(run.timestamp)}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <button
+                        className="button button-secondary"
+                        onClick={(e) => { e.stopPropagation(); downloadRunReport(run); }}
+                        style={{ padding: "3px 8px", fontSize: 11 }}
+                        type="button"
+                      >
+                        Export
+                      </button>
+                    </td>
                     <td style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: 12 }}>
                       {isOpen ? "▲" : "▼"}
                     </td>
@@ -506,6 +555,7 @@ export function MonitoringPage() {
                         </span>
                       </td>
                       <td><span className={scoreBadgeClass(e.score)}>{e.score}</span></td>
+                      <td />
                       <td />
                       <td />
                     </tr>
