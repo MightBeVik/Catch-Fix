@@ -140,11 +140,23 @@ export function ensureDefaultAdmin() {
 
   const password = process.env.ADMIN_PASSWORD || "ChangeMe123!";
   const hash = bcrypt.hashSync(password, 10);
+  
+  // Admin
   db.prepare(
     "INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, 'Admin')",
   ).run("admin", "admin@catchfix.local", hash);
 
-  console.log(`\n[Catch-Fix] Default admin created — username: admin  password: ${password}\n`);
+  // Maintainer
+  db.prepare(
+    "INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, 'Maintainer')",
+  ).run("maintainer", "maintainer@catchfix.local", hash);
+
+  // Viewer
+  db.prepare(
+    "INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, 'Viewer')",
+  ).run("viewer", "viewer@catchfix.local", hash);
+
+  console.log(`\n[Catch-Fix] Demo users created (admin, maintainer, viewer) — password: ${password}\n`);
 }
 
 export function clearOperationalData() {
@@ -384,7 +396,38 @@ function ensureMonitoringHistory(services) {
 
 function ensureIncidents(services) {
   const serviceByName = new Map(services.map((service) => [service.name, service]));
-  const incidents = [];
+  const incidents = [
+    {
+      serviceName: "Claude Ops Assistant",
+      severity: "high",
+      symptoms: "Latent drift detected in formatting accuracy.",
+      timeline: "Detected at T-2h by scheduler. Manual verification confirmed 15% regression.",
+      checklist: [
+        { task: "Identify root cause of drift", completed: true },
+        { task: "Update prompt template", completed: false },
+        { task: "Verify fix in dev environment", completed: false }
+      ],
+      llmSummary: "The Claude Ops Assistant is experiencing a gradual decline in JSON output quality, likely due to recent prompt adjustments in the underlying model version.",
+      approved: false,
+      createdAt: hoursAgoIso(2),
+      updatedAt: hoursAgoIso(1),
+    },
+    {
+      serviceName: "Sam Altman's Worst Nightmare",
+      severity: "critical",
+      symptoms: "Intermittent 503 errors during peak load.",
+      timeline: "Initial alerts triggered at T-5h. Automatic failover initiated.",
+      checklist: [
+        { task: "Check rate limit status", completed: true },
+        { task: "Review retry logic in adapter", completed: true },
+        { task: "Scale backend instances", completed: true }
+      ],
+      llmSummary: "A sudden spike in traffic caused the OpenAI adapter to hit rate limits, resulting in cascading failures across the Nightmare service cluster.",
+      approved: true,
+      createdAt: hoursAgoIso(6),
+      updatedAt: hoursAgoIso(4),
+    }
+  ];
 
   for (const incident of incidents) {
     const service = serviceByName.get(incident.serviceName);
@@ -439,6 +482,15 @@ function ensureMaintenancePlans(services) {
       approved: true,
       createdAt: hoursAgoIso(4),
     },
+    {
+      serviceName: "Sam Altman's Worst Nightmare",
+      nextEvalTime: hoursFromNowIso(24),
+      riskLevel: "low",
+      rollbackPlan: "Flush the regional cache and restart the adapter instances to clear stale session tokens.",
+      validationSteps: "Monitor 5xx error rates for 10 minutes post-deployment and verify token refresh cycles via logs.",
+      approved: false,
+      createdAt: hoursAgoIso(12),
+    },
   ];
 
   for (const plan of planSpecs) {
@@ -483,6 +535,34 @@ function ensureMaintenancePlans(services) {
 function monitoringSeedByName(serviceName) {
   const defaults = [
     {
+      timestamp: hoursAgoIso(72),
+      formattingScore: 100,
+      policyScore: 100,
+      judgeScore: 100,
+      judgeReasoning: "Baseline performance snapshot.",
+      judgeMatchedFacts: ["status", "summary", "actions"],
+      judgeMissingFacts: [],
+      qualityScore: 100,
+      latencyMs: 750,
+      errorRate: 0,
+      triggeredBy: "scheduler",
+      preview: '{"status":"ok","summary":"Stable baseline.","actions":[]}',
+    },
+    {
+      timestamp: hoursAgoIso(48),
+      formattingScore: 100,
+      policyScore: 100,
+      judgeScore: 90,
+      judgeReasoning: "Slight factual omission in summary.",
+      judgeMatchedFacts: ["status", "actions"],
+      judgeMissingFacts: ["summary"],
+      qualityScore: 95,
+      latencyMs: 820,
+      errorRate: 0,
+      triggeredBy: "scheduler",
+      preview: '{"status":"ok","actions":["check"]}',
+    },
+    {
       timestamp: hoursAgoIso(28),
       formattingScore: 100,
       policyScore: 100,
@@ -495,6 +575,20 @@ function monitoringSeedByName(serviceName) {
       errorRate: 0,
       triggeredBy: "scheduler",
       preview: '{"status":"ok","summary":"Nominal response quality.","actions":["monitor"]}',
+    },
+    {
+      timestamp: hoursAgoIso(12),
+      formattingScore: 100,
+      policyScore: 80,
+      judgeScore: 100,
+      judgeReasoning: "High quality but PII detected.",
+      judgeMatchedFacts: ["status", "summary", "actions"],
+      judgeMissingFacts: [],
+      qualityScore: 90,
+      latencyMs: 950,
+      errorRate: 0.05,
+      triggeredBy: "scheduler",
+      preview: '{"status":"ok","summary":"User melissa@example.com logged in."}',
     },
     {
       timestamp: hoursAgoIso(2),

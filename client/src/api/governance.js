@@ -20,14 +20,6 @@ export function fetchAuditLog(params = {}) {
   return apiRequest(`/governance/audit-log?${query}`);
 }
 
-export function fetchRuntimeStatus() {
-  return apiRequest("/governance/runtime-status");
-}
-
-export function fetchUsers() {
-  return apiRequest("/users");
-}
-
 export function reseedDemoData() {
   return apiRequest("/governance/admin/reseed-demo-data", { method: "POST" });
 }

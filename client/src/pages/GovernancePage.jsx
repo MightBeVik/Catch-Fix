@@ -9,14 +9,14 @@ import {
   fetchAuditLog,
   fetchPolicy,
   fetchRoles,
-  fetchRuntimeStatus,
-  fetchUsers,
   reseedDemoData,
   resetDemoData,
   runEvaluationCycle,
   setSchedulerState,
   updatePolicy,
 } from "../api/governance";
+import { fetchMaintenancePlans } from "../api/maintenance";
+import { fetchUsers } from "../api/users";
 import { isAdmin } from "../lib/roles";
 
 export function GovernancePage() {
@@ -24,25 +24,27 @@ export function GovernancePage() {
   const [roles, setRoles] = useState([]);
   const [policy, setPolicy] = useState(null);
   const [auditLog, setAuditLog] = useState([]);
-  const [runtime, setRuntime] = useState(null);
+  const [maintenancePlans, setMaintenancePlans] = useState([]);
   const [users, setUsers] = useState([]);
   const [filters, setFilters] = useState({ action: "", role: "", startDate: "", endDate: "" });
   const [exportRange, setExportRange] = useState({ startDate: "", endDate: "" });
   const [editingPolicy, setEditingPolicy] = useState(null);
+  const [status, setStatus] = useState("");
+  const [sortOrder, setSortOrder] = useState("desc");
   const adminEnabled = isAdmin(role);
 
   async function load(order = sortOrder, currentFilters = filters) {
-    const [roleData, policyData, auditData, runtimeData, userData] = await Promise.all([
+    const [roleData, policyData, auditData, maintenanceData, userData] = await Promise.all([
       fetchRoles(),
       fetchPolicy(),
       fetchAuditLog({ order, ...currentFilters }),
-      fetchRuntimeStatus(),
+      fetchMaintenancePlans({ includeArchived: false }),
       adminEnabled ? fetchUsers() : Promise.resolve({ items: [] }),
     ]);
     setRoles(roleData.roles || []);
     setPolicy(policyData);
     setAuditLog(auditData.items || []);
-    setRuntime(runtimeData);
+    setMaintenancePlans(maintenanceData.items || []);
     setUsers(userData.items || []);
   }
 
@@ -121,6 +123,10 @@ export function GovernancePage() {
     }
   }
 
+  const activePlans = maintenancePlans.filter(
+    (p) => p.status === "pending" || p.status === "approved"
+  );
+
   return (
     <section className="page">
       <div className="page-header">
@@ -133,20 +139,20 @@ export function GovernancePage() {
         <div className="button-row" style={{ alignItems: "flex-end" }}>
           <div className="field-stack" style={{ minWidth: 140 }}>
             <div className="field-label" style={{ fontSize: 11 }}>Export Start</div>
-            <input 
-              className="input" 
-              type="date" 
-              value={exportRange.startDate} 
-              onChange={(e) => setExportRange({ ...exportRange, startDate: e.target.value })} 
+            <input
+              className="input"
+              type="date"
+              value={exportRange.startDate}
+              onChange={(e) => setExportRange({ ...exportRange, startDate: e.target.value })}
             />
           </div>
           <div className="field-stack" style={{ minWidth: 140 }}>
             <div className="field-label" style={{ fontSize: 11 }}>Export End</div>
-            <input 
-              className="input" 
-              type="date" 
-              value={exportRange.endDate} 
-              onChange={(e) => setExportRange({ ...exportRange, endDate: e.target.value })} 
+            <input
+              className="input"
+              type="date"
+              value={exportRange.endDate}
+              onChange={(e) => setExportRange({ ...exportRange, endDate: e.target.value })}
             />
           </div>
           <button className="button button-primary" onClick={handleExport} type="button">
@@ -176,9 +182,9 @@ export function GovernancePage() {
                 <div className="section-row">
                   <div className="field-label">{key.replaceAll("_", " ")}</div>
                   {adminEnabled && (
-                    <button 
-                      className="button button-secondary" 
-                      onClick={() => setEditingPolicy({ key, value: Array.isArray(value) ? value.join(", ") : value })} 
+                    <button
+                      className="button button-secondary"
+                      onClick={() => setEditingPolicy({ key, value: Array.isArray(value) ? value.join(", ") : value })}
                       style={{ padding: "4px 8px", fontSize: 11 }}
                       type="button"
                     >
@@ -188,15 +194,15 @@ export function GovernancePage() {
                 </div>
                 {editingPolicy?.key === key ? (
                   <div className="field-stack" style={{ marginTop: 8 }}>
-                    <textarea 
-                      className="input" 
+                    <textarea
+                      className="input"
                       onChange={(e) => setEditingPolicy({ ...editingPolicy, value: e.target.value })}
-                      rows={3} 
-                      value={editingPolicy.value} 
+                      rows={3}
+                      value={editingPolicy.value}
                     />
                     <div className="button-row">
-                      <button 
-                        className="button button-primary" 
+                      <button
+                        className="button button-primary"
                         onClick={() => handlePolicyUpdate(key, key === "data_stored" ? editingPolicy.value.split(",").map(s => s.trim()) : editingPolicy.value)}
                         type="button"
                       >
@@ -219,49 +225,29 @@ export function GovernancePage() {
       <div className="split-layout" style={{ gridTemplateColumns: "minmax(0, 1.1fr) minmax(320px, 0.9fr)" }}>
         <div className="panel">
           <div className="section-row">
-            <h4 className="section-title">Runtime and Scheduler</h4>
+            <h4 className="section-title">Scheduled Maintenance</h4>
             <button className="button button-secondary" onClick={() => load(sortOrder)} type="button">
-              Refresh runtime
+              Refresh
             </button>
           </div>
-          {runtime ? (
-            <div className="runtime-grid" style={{ marginTop: 16 }}>
-              <div className="panel-elevated" style={{ padding: "14px 16px" }}>
-                <div className="field-label">LLM routing runtime</div>
-                <div className="field-stack" style={{ marginTop: 12 }}>
-                  <div>Supported providers: {(runtime.runtime.supported_providers || []).map((provider) => provider.name).join(", ")}</div>
-                  <div>Anthropic secret loaded: {runtime.runtime.secrets?.ANTHROPIC_API_KEY ? "yes" : "no"}</div>
-                  <div>OpenAI secret loaded: {runtime.runtime.secrets?.OPENAI_API_KEY ? "yes" : "no"}</div>
-                  <div>Timeout: {runtime.runtime.request_timeout_ms} ms</div>
-                  <div>Retries: {runtime.runtime.request_max_retries}</div>
-                  <div>Drift threshold: {runtime.runtime.drift_threshold}</div>
+          <div className="field-stack" style={{ marginTop: 16 }}>
+            {activePlans.length > 0 ? activePlans.map((plan) => (
+              <div className="panel-elevated" style={{ padding: "14px 16px" }} key={plan.id}>
+                <div className="section-row">
+                  <div className="service-card-title" style={{ fontSize: 15 }}>
+                    Service #{plan.service_id}
+                  </div>
+                  <span className="badge">{plan.status}</span>
+                </div>
+                <div className="field-stack" style={{ marginTop: 8 }}>
+                  <div>Next eval: {plan.next_eval_time ? formatMDT(plan.next_eval_time) : "—"}</div>
+                  <div>Eval mode: {plan.eval_mode} · Risk: {plan.risk_level}</div>
                 </div>
               </div>
-              <div className="panel-elevated" style={{ padding: "14px 16px" }}>
-                <div className="field-label">Scheduler status</div>
-                <div className="field-stack" style={{ marginTop: 12 }}>
-                  <div>Enabled: {runtime.scheduler.enabled ? "yes" : "no"}</div>
-                  <div>Running: {runtime.scheduler.running ? "yes" : "no"}</div>
-                  <div>Schedule: {runtime.scheduler.schedule}</div>
-                  <div>Last status: {runtime.scheduler.last_run_status}</div>
-                  <div>Last service count: {runtime.scheduler.last_run_service_count}</div>
-                  <div>Last started: {runtime.scheduler.last_run_started_at || "never"}</div>
-                  <div>Last completed: {runtime.scheduler.last_run_completed_at || "never"}</div>
-                </div>
-              </div>
-              <div className="panel-elevated" style={{ padding: "14px 16px", gridColumn: "1 / -1" }}>
-                <div className="field-label">Operational counts</div>
-                <div className="stat-grid" style={{ marginTop: 12 }}>
-                  {Object.entries(runtime.counts).map(([key, value]) => (
-                    <div className="stat-tile" key={key}>
-                      <div className="field-label">{key.replaceAll("_", " ")}</div>
-                      <div className="stat-tile-value">{value}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
+            )) : (
+              <p className="section-copy">No active maintenance plans scheduled.</p>
+            )}
+          </div>
         </div>
 
         <div className="panel">
@@ -289,13 +275,15 @@ export function GovernancePage() {
               Clear operational data
             </button>
           </div>
-          {!adminEnabled ? <p className="section-copy" style={{ marginTop: 12 }}>Only the Admin role can use control-plane actions.</p> : null}
+          {!adminEnabled && (
+            <p className="section-copy" style={{ marginTop: 12 }}>Only the Admin role can use control-plane actions.</p>
+          )}
         </div>
       </div>
 
       {adminEnabled && (
         <div className="panel" style={{ marginTop: 24 }}>
-          <h4 className="section-title">Active Platform Users (Admins Only)</h4>
+          <h4 className="section-title">Active Platform Users</h4>
           <div className="table-shell" style={{ marginTop: 16 }}>
             <table className="data-table">
               <thead>
